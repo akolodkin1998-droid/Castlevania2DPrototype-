@@ -1,0 +1,866 @@
+{
+    "capturedAtUtc": "2026-07-27T10:47:00Z",
+    "scenePath": "Assets/Scenes/Prototype.unity",
+    "objects": [
+        {
+            "hierarchyPath": "Platform_Grid",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Platform_Grid/Ground",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Platform_Grid/OneWayPlatforms",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Platform_Grid/RightCenterPlatform",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Platform_Grid/RightWall",
+            "isActive": true,
+            "position": {
+                "x": -0.9700000286102295,
+                "y": 1.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Platform_Grid/LeftWall",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 1.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight",
+            "isActive": true,
+            "position": {
+                "x": -12.0,
+                "y": -37.012,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": 0
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight/GroundSensor",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": -0.019999999552965165,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight/WallSensor_R1",
+            "isActive": true,
+            "position": {
+                "x": 0.375,
+                "y": 0.15000000596046449,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight/WallSensor_R2",
+            "isActive": true,
+            "position": {
+                "x": 0.375,
+                "y": 1.149999976158142,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight/WallSensor_L1",
+            "isActive": true,
+            "position": {
+                "x": -0.3779999911785126,
+                "y": 0.15000000596046449,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight/WallSensor_L2",
+            "isActive": true,
+            "position": {
+                "x": -0.3779999911785126,
+                "y": 1.149999976158142,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Player_HeroKnight/AttackHitbox",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 0.662,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Enemy_EvilWizard",
+            "isActive": true,
+            "position": {
+                "x": 3.0,
+                "y": 2.549999952316284,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.0,
+                "y": 2.0,
+                "z": 1.0
+            },
+            "sortingOrder": 0
+        },
+        {
+            "hierarchyPath": "Main Camera",
+            "isActive": true,
+            "position": {
+                "x": -12.0,
+                "y": -33.472,
+                "z": -10.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "HUD_Canvas",
+            "isActive": true,
+            "position": {
+                "x": 549.5,
+                "y": 247.5,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 0.5121992826461792,
+                "y": 0.5121992826461792,
+                "z": 0.5121992826461792
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "HUD_Canvas/HealthBar",
+            "isActive": true,
+            "position": {
+                "x": -2072.437744140625,
+                "y": 919.56396484375,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "HUD_Canvas/HealthBar/Fill",
+            "isActive": true,
+            "position": {
+                "x": 130.0,
+                "y": -11.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "HUD_Canvas/BlockDurabilityBar",
+            "isActive": true,
+            "position": {
+                "x": -2072.437744140625,
+                "y": 853.1835327148438,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "HUD_Canvas/BlockDurabilityBar/Fill",
+            "isActive": true,
+            "position": {
+                "x": 130.0,
+                "y": -11.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "HUD_Canvas/QuickAccessPanel",
+            "isActive": true,
+            "position": {
+                "x": 24.0,
+                "y": -160.5508,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 3.0,
+                "y": 3.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Boss_Flower",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 1.3200000524520875,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 0.375,
+                "y": 0.375,
+                "z": 1.0
+            },
+            "sortingOrder": 2
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover",
+            "isActive": true,
+            "position": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": -2147483648
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_00",
+            "isActive": true,
+            "position": {
+                "x": -1.399999976158142,
+                "y": -3.4600000381469728,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_01",
+            "isActive": true,
+            "position": {
+                "x": -3.240000009536743,
+                "y": -3.4600000381469728,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_02",
+            "isActive": true,
+            "position": {
+                "x": 11.210000038146973,
+                "y": -3.450000047683716,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_03",
+            "isActive": true,
+            "position": {
+                "x": -8.5,
+                "y": -3.450000047683716,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_04",
+            "isActive": true,
+            "position": {
+                "x": 0.8399999737739563,
+                "y": -3.5199999809265138,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_05",
+            "isActive": true,
+            "position": {
+                "x": 12.729999542236329,
+                "y": -3.450000047683716,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_06",
+            "isActive": true,
+            "position": {
+                "x": 2.7899999618530275,
+                "y": -3.2100000381469728,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_07",
+            "isActive": true,
+            "position": {
+                "x": 5.079999923706055,
+                "y": -3.450000047683716,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_0_08",
+            "isActive": true,
+            "position": {
+                "x": 9.520000457763672,
+                "y": -3.3399999141693117,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_00",
+            "isActive": true,
+            "position": {
+                "x": -6.829999923706055,
+                "y": -3.619999885559082,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_01",
+            "isActive": true,
+            "position": {
+                "x": -1.399999976158142,
+                "y": -3.559999942779541,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_02",
+            "isActive": true,
+            "position": {
+                "x": -4.909999847412109,
+                "y": -3.559999942779541,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_03",
+            "isActive": true,
+            "position": {
+                "x": -2.369999885559082,
+                "y": -3.5199999809265138,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_04",
+            "isActive": true,
+            "position": {
+                "x": -10.229999542236329,
+                "y": -3.4600000381469728,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_05",
+            "isActive": true,
+            "position": {
+                "x": 1.5700000524520875,
+                "y": -3.359999895095825,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_06",
+            "isActive": true,
+            "position": {
+                "x": 3.5399999618530275,
+                "y": -3.390000104904175,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_07",
+            "isActive": true,
+            "position": {
+                "x": 5.320000171661377,
+                "y": -3.1500000953674318,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "Boss_Flower/GrassCover/Grass02_1_08",
+            "isActive": true,
+            "position": {
+                "x": 6.800000190734863,
+                "y": -3.359999895095825,
+                "z": 0.0
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 2.6666667461395265,
+                "y": 2.6666667461395265,
+                "z": 1.0
+            },
+            "sortingOrder": 3
+        },
+        {
+            "hierarchyPath": "TX Village Props - Road Lamp Support",
+            "isActive": true,
+            "position": {
+                "x": -11.920000076293946,
+                "y": 1.440000057220459,
+                "z": -2.678262710571289
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": 0
+        },
+        {
+            "hierarchyPath": "TX Village Props - Bounding Platform 01",
+            "isActive": true,
+            "position": {
+                "x": 11.978565216064454,
+                "y": 0.023298043757677079,
+                "z": -3.648956298828125
+            },
+            "eulerAngles": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "scale": {
+                "x": 1.0,
+                "y": 1.0,
+                "z": 1.0
+            },
+            "sortingOrder": 0
+        }
+    ]
+}

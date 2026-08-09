@@ -1,0 +1,70 @@
+# Unity collaboration: normalize text, help merge YAML assets.
+# Docs: https://docs.unity3d.com/Manual/SmartMerge.html
+
+* text=auto eol=lf
+
+# Scripts / text
+*.cs            text diff=csharp
+*.shader        text
+*.cginc         text
+*.hlsl          text
+*.compute       text
+*.json          text
+*.txt           text
+*.md            text
+*.asmdef        text
+*.asmref        text
+*.rsp           text
+
+# Unity YAML — use UnityYAMLMerge when configured (see README)
+*.meta          text merge=unityyamlmerge eol=lf
+*.unity         text merge=unityyamlmerge eol=lf
+*.prefab        text merge=unityyamlmerge eol=lf
+*.asset         text merge=unityyamlmerge eol=lf
+*.controller    text merge=unityyamlmerge eol=lf
+*.anim          text merge=unityyamlmerge eol=lf
+*.overrideController text merge=unityyamlmerge eol=lf
+*.physicsMaterial2D text merge=unityyamlmerge eol=lf
+*.mask          text merge=unityyamlmerge eol=lf
+*.brush         text merge=unityyamlmerge eol=lf
+*.flare         text merge=unityyamlmerge eol=lf
+*.fontsettings  text merge=unityyamlmerge eol=lf
+*.guiskin       text merge=unityyamlmerge eol=lf
+*.giparams      text merge=unityyamlmerge eol=lf
+*.playable      text merge=unityyamlmerge eol=lf
+*.signal        text merge=unityyamlmerge eol=lf
+*.terrainlayer  text merge=unityyamlmerge eol=lf
+*.mixer         text merge=unityyamlmerge eol=lf
+
+# Binary / don't merge as text
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.tga           binary
+*.psd           binary
+*.tif           binary
+*.tiff          binary
+*.gif           binary
+*.bmp           binary
+*.exr           binary
+*.hdr           binary
+*.wav           binary
+*.mp3           binary
+*.ogg           binary
+*.aif           binary
+*.aiff          binary
+*.fbx           binary
+*.obj           binary
+*.blend         binary
+*.ttf           binary
+*.otf           binary
+*.dll           binary
+*.so            binary
+*.dylib         binary
+*.pdb           binary
+*.mdb           binary
+*.zip           binary
+*.7z            binary
+*.unitypackage  binary
+*.cubemap       binary
+*.unitypackage  binary

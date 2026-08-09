@@ -1,0 +1,463 @@
+{
+  "strips": {
+    "idle": {
+      "guid": "32a6fc3ca7384a9ab77c40bcc013e448",
+      "clip": "HeroKnight_Idle",
+      "frameCount": 8,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_idle.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png",
+        "frame_006.png",
+        "frame_007.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "run": {
+      "guid": "2ea4664a2faa4271bfe373b44c88cad2",
+      "clip": "HeroKnight_Run",
+      "frameCount": 10,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_run.png",
+      "sourceRoot": "C:/Users/Bensh/OneDrive/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u041f\u0435\u0440\u0441\u043e\u043d\u0430\u0436/warrior_animations_game_ready-v5 (1)/game_ready/frames/run/run",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_0003.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_006.png",
+        "frame_007.png",
+        "frame_008.png",
+        "frame_010.png"
+      ]
+    },
+    "jump": {
+      "guid": "33bbc10b9bf849399df6ca9071a0d049",
+      "clip": "HeroKnight_Jump",
+      "frameCount": 3,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_jump.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "fall": {
+      "guid": "9272a788e3724bec8c904d6824fd5c25",
+      "clip": "HeroKnight_Fall",
+      "frameCount": 4,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_fall.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "hurt": {
+      "guid": "f5ec58e9125e42e8a2f6d2d72a8b7cb1",
+      "clip": "HeroKnight_Hurt",
+      "frameCount": 3,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_hurt.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "roll": {
+      "guid": "3b20aa1156c04db5b4277b66027e787b",
+      "clip": "HeroKnight_Roll",
+      "frameCount": 9,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_roll.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png",
+        "frame_006.png",
+        "frame_007.png",
+        "frame_008.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "attack_1": {
+      "guid": "e3ac844a6c044b65a34826acc0a83062",
+      "clip": "HeroKnight_Attack1",
+      "frameCount": 6,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_attack_1.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "attack_2": {
+      "guid": "6154185ee4e244648c24306bd9995815",
+      "clip": "HeroKnight_Attack2",
+      "frameCount": 6,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_attack_2.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "attack_3": {
+      "guid": "8b2ba2b075184eed82308fddd815ba29",
+      "clip": "HeroKnight_Attack3",
+      "frameCount": 8,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_attack_3.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png",
+        "frame_006.png",
+        "frame_007.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "block_effect": {
+      "guid": "18eb56b75821449d8165446f9ad04dd8",
+      "clip": "HeroKnight_Block",
+      "frameCount": 5,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_effect.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "block_overhead": {
+      "guid": "ac78cc7c80bf4b54bcaeafe9645fe7bb",
+      "clip": "HeroKnight_IdleBlock",
+      "frameCount": 6,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_overhead.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "death_blood": {
+      "guid": "fb9db5db4eec4730a3c8da47e737e4a4",
+      "clip": "HeroKnight_Death",
+      "frameCount": 10,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_death_blood.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png",
+        "frame_006.png",
+        "frame_007.png",
+        "frame_008.png",
+        "frame_009.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "wall_slide": {
+      "guid": "f65adfd73d9a4d6bacdbeba465802832",
+      "clip": "HeroKnight_WallSlide",
+      "frameCount": 5,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 133.33,
+      "pivot": {
+        "x": 0.48,
+        "y": 0
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_wall_slide.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "ledge_grab": {
+      "guid": "e3a1cdc8c5394a4e845e79f91db03f47",
+      "clip": "HeroKnight_LedgeGrab",
+      "frameCount": 5,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_ledge_grab.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "block_no_effect": {
+      "guid": "a7e15b99faaf448aa7823b7c066bd218",
+      "clip": "HeroKnight_BlockNoEffect",
+      "frameCount": 5,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_no_effect.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "block_idle": {
+      "guid": "65f104d904ab4a8eb4cfa167da6a868e",
+      "clip": "HeroKnight_BlockIdle",
+      "frameCount": 8,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_idle.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png",
+        "frame_006.png",
+        "frame_007.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "death_no_blood": {
+      "guid": "2ffc1f3bfa6244b28a06af9ceb23314a",
+      "clip": "HeroKnight_DeathNoBlood",
+      "frameCount": 10,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 240,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_death_no_blood.png",
+      "sourceFrames": [
+        "frame_000.png",
+        "frame_001.png",
+        "frame_002.png",
+        "frame_003.png",
+        "frame_004.png",
+        "frame_005.png",
+        "frame_006.png",
+        "frame_007.png",
+        "frame_008.png",
+        "frame_009.png"
+      ],
+      "sourceRoot": "game_ready/frames"
+    },
+    "block_overhead_walk": {
+      "guid": "0b51943b9d6a4788b922e5995ee6602e",
+      "clip": "HeroKnight_IdleBlockWalk",
+      "frameCount": 20,
+      "cellWidth": 784,
+      "cellHeight": 736,
+      "globalCellWidth": 784,
+      "globalCellHeight": 736,
+      "ppu": 321,
+      "pivot": {
+        "x": 0.436224,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_overhead_walk.png",
+      "sourceRoot": "1785214083_6a6834832efd6/converted (Photoroom, read-only)",
+      "sourceFrames": [
+        "frame_001-Photoroom.png",
+        "frame_002-Photoroom.png",
+        "frame_003-Photoroom.png",
+        "frame_004-Photoroom.png",
+        "frame_005-Photoroom.png",
+        "frame_006-Photoroom.png",
+        "frame_007-Photoroom.png",
+        "frame_008-Photoroom.png",
+        "frame_009-Photoroom.png",
+        "frame_010-Photoroom.png",
+        "frame_011-Photoroom.png",
+        "frame_012-Photoroom.png",
+        "frame_013-Photoroom.png",
+        "frame_014-Photoroom.png",
+        "frame_015-Photoroom.png",
+        "frame_016-Photoroom.png",
+        "frame_017-Photoroom.png",
+        "frame_018-Photoroom.png",
+        "frame_019-Photoroom.png",
+        "frame_020-Photoroom.png"
+      ]
+    }
+  },
+  "sourcePolicy": {
+    "readOnlySource": "C:/Users/Bensh/OneDrive/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u041f\u0435\u0440\u0441\u043e\u043d\u0430\u0436/warrior_animations_game_ready-v5 (1)/game_ready/frames",
+    "note": "In-game HeroKnight strips import from game_ready/frames; block_overhead_walk uses converted Photoroom."
+  }
+}
