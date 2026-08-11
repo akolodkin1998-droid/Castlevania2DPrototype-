@@ -102,14 +102,14 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1000000001}
-  m_BodyType: 1
+  m_BodyType: 0
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
-  m_GravityScale: 0
+  m_GravityScale: 3
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -165,7 +165,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1.408, y: 2.304}
+  m_Size: {x: 1.408, y: 1.95}
   m_EdgeRadius: 0
 --- !u!114 &1000000006
 MonoBehaviour:
@@ -198,6 +198,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   hitCooldown: 0.5
+  onlyDamagePlayer: 1
 --- !u!114 &1000000008
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -215,6 +216,8 @@ MonoBehaviour:
   moveSpeed: 1.8
   chaseRange: 18
   stopDistance: 0.2
+  gravityScale: 3
+  spawnGroundProbeDistance: 30
   idleFrames:
   - {fileID: 21300000, guid: babd247f99ba434dbe7b80a124764289, type: 3}
   - {fileID: 21300000, guid: d86463894cd24b32a5636c3eda5e89bb, type: 3}

@@ -188,6 +188,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   hitCooldown: 0.5
+  onlyDamagePlayer: 1
 --- !u!114 &1000000008
 MonoBehaviour:
   m_ObjectHideFlags: 0

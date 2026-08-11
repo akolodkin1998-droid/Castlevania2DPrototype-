@@ -248,9 +248,10 @@ namespace Castlevania2D.Enemies
                     continue;
                 }
 
-                // Do not damage self (Mushomor Health implements IDamageable).
-                if (damageable is Component damageableComponent &&
-                    damageableComponent.transform == transform)
+                // The attack belongs to the player-targeting AI. Never damage
+                // another enemy that happens to overlap the melee box.
+                if (damageable is not Component damageableComponent ||
+                    !IsCurrentTarget(damageableComponent))
                 {
                     continue;
                 }
@@ -260,6 +261,13 @@ namespace Castlevania2D.Enemies
                 Vector2 direction = new Vector2(facing, 0f);
                 damageable.ReceiveDamage(new DamageInfo(attackDamage, gameObject, hitPoint, direction));
             }
+        }
+
+        private bool IsCurrentTarget(Component damageableComponent)
+        {
+            return target != null &&
+                   damageableComponent != null &&
+                   damageableComponent.transform.root == target.root;
         }
 
         private float GetFacingSign()

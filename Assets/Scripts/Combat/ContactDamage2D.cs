@@ -9,6 +9,7 @@ namespace Castlevania2D.Combat
         [SerializeField] private int damage = 10;
         [SerializeField] private LayerMask targetMask;
         [SerializeField] private float hitCooldown = 0.5f;
+        [SerializeField] private bool onlyDamagePlayer;
 
         private readonly Dictionary<IDamageable, float> nextHitTimes = new Dictionary<IDamageable, float>();
 
@@ -40,7 +41,9 @@ namespace Castlevania2D.Combat
             }
 
             IDamageable damageable = other.GetComponentInParent<IDamageable>();
-            if (damageable == null || !damageable.CanReceiveDamage)
+            if (damageable == null ||
+                !damageable.CanReceiveDamage ||
+                onlyDamagePlayer && !IsPlayer(damageable))
             {
                 return;
             }
@@ -54,6 +57,19 @@ namespace Castlevania2D.Combat
 
             Vector2 direction = ((Vector2)other.transform.position - (Vector2)transform.position).normalized;
             damageable.ReceiveDamage(new DamageInfo(damage, gameObject, hitPoint, direction));
+        }
+
+        private static bool IsPlayer(IDamageable damageable)
+        {
+            if (damageable is not Component component)
+            {
+                return false;
+            }
+
+            Transform root = component.transform.root;
+            return root.CompareTag("Player") ||
+                   root.name.IndexOf("Player", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   root.name.IndexOf("Hero", System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private Vector2 GetContactPoint(Collision2D collision)

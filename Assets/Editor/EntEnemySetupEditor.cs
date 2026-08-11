@@ -677,6 +677,7 @@ public static class EntEnemySetupEditor
         SerializedObject contactSo = new SerializedObject(contact);
         contactSo.FindProperty("damage").intValue = ContactDamage;
         contactSo.FindProperty("hitCooldown").floatValue = 0.5f;
+        contactSo.FindProperty("onlyDamagePlayer").boolValue = true;
         contactSo.ApplyModifiedPropertiesWithoutUndo();
 
         var walker = root.AddComponent<EntWalkerEnemy2D>();

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32e082ecb25297245ae11e542be7822d, type: 3}
+  m_Name: Lava_Animated
+  m_EditorClassIdentifier: 
+  frames:
+  - {fileID: 21300000, guid: a0e2f8c8cec50364ebeeaa754d5cc48e, type: 3}
+  - {fileID: 21300000, guid: 7effc15492d51324382ec068f905d85b, type: 3}
+  - {fileID: 21300000, guid: acd24150233573d4eb95078de0e871a0, type: 3}
+  - {fileID: 21300000, guid: 6fc6978bfbf27604b9a178a6e0e81681, type: 3}
+  - {fileID: 21300000, guid: 0f1fb1db018c2664886c2713038490f6, type: 3}
+  - {fileID: 21300000, guid: 47b8765e10217024389cd94d51decfcf, type: 3}
+  - {fileID: 21300000, guid: 96333812a98f5f64b8a631853ec4bb80, type: 3}
+  - {fileID: 21300000, guid: 6d2b24aca46e4e04e995e7279d6f2405, type: 3}
+  - {fileID: 21300000, guid: 2db1552227949e94281af599bef969aa, type: 3}
+  framesPerSecond: 10

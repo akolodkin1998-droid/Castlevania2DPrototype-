@@ -201,7 +201,7 @@ namespace Castlevania2D.Enemies
 
         private void SpawnUnit(GameObject prefab, string instanceName, List<GameObject> liveList)
         {
-            // Spawn at portal world position. Ents plant capsule on floor; mushomors keep portal Y.
+            // Spawn at portal world position, then plant each grounded summon on the floor below.
             Vector3 position = transform.position + (Vector3)spawnOffset;
             // Keep summons unparented so they survive portal/wizard teardown.
             GameObject unit = Instantiate(prefab, position, Quaternion.identity);
@@ -216,6 +216,13 @@ namespace Castlevania2D.Enemies
             {
                 // Plants CapsuleCollider2D bottom on ground under the portal, then locks walk Y.
                 entWalker.PlaceOnGroundFromSpawn();
+            }
+
+            var mushomorMovement = unit.GetComponent<MushomorMovement2D>();
+            if (mushomorMovement != null)
+            {
+                // Plants the body collider bottom on the nearest static floor below the portal.
+                mushomorMovement.PlaceOnGroundFromSpawn();
             }
 
             // Prefabs carry LootDropOnDeath; bootstrap covers summons that lack it.

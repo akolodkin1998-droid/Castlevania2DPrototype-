@@ -631,6 +631,8 @@ public static class MushomorEnemySetupEditor
             moveSo.FindProperty("moveSpeed").floatValue = MoveSpeed;
             moveSo.FindProperty("chaseRange").floatValue = ChaseRange;
             moveSo.FindProperty("stopDistance").floatValue = 0.2f;
+            moveSo.FindProperty("gravityScale").floatValue = 3f;
+            moveSo.FindProperty("spawnGroundProbeDistance").floatValue = 30f;
             moveSo.FindProperty("idleFrameRate").floatValue = FrameRate;
             moveSo.FindProperty("pingPongIdle").boolValue = false;
             moveSo.FindProperty("frameRate").floatValue = FrameRate;
@@ -709,12 +711,15 @@ public static class MushomorEnemySetupEditor
         }
 
         Bounds bounds = sprite.bounds;
-        // Slightly narrower than full canvas so the tall cap does not snag walls.
+        // Match the authored scene Mushomor: shorter body lets the visible feet
+        // sit on the floor despite transparent padding at the bottom of the sprite.
         float width = Mathf.Max(0.4f, bounds.size.x * 0.55f);
-        float height = Mathf.Max(0.5f, bounds.size.y * 0.9f);
+        float height = Mathf.Max(0.5f, bounds.size.y * 0.76171875f);
         box.isTrigger = false;
         box.size = new Vector2(width, height);
-        box.offset = new Vector2(bounds.center.x, bounds.min.y + height * 0.5f);
+        box.offset = new Vector2(
+            bounds.center.x,
+            bounds.min.y + bounds.size.y * 0.45f);
     }
 
     private static GameObject BuildOrUpdatePrefab(
@@ -732,8 +737,8 @@ public static class MushomorEnemySetupEditor
         renderer.sortingOrder = 3;
 
         var body = root.AddComponent<Rigidbody2D>();
-        body.bodyType = RigidbodyType2D.Kinematic;
-        body.gravityScale = 0f;
+        body.bodyType = RigidbodyType2D.Dynamic;
+        body.gravityScale = 3f;
         body.constraints = RigidbodyConstraints2D.FreezeRotation;
         body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         body.interpolation = RigidbodyInterpolation2D.Interpolate;
@@ -751,6 +756,7 @@ public static class MushomorEnemySetupEditor
         SerializedObject contactSo = new SerializedObject(contact);
         contactSo.FindProperty("damage").intValue = ContactDamage;
         contactSo.FindProperty("hitCooldown").floatValue = 0.5f;
+        contactSo.FindProperty("onlyDamagePlayer").boolValue = true;
         contactSo.ApplyModifiedPropertiesWithoutUndo();
 
         var movement = root.AddComponent<MushomorMovement2D>();
