@@ -47,6 +47,7 @@ namespace Castlevania2D.Enemies
         private WizardPortal2D portal2;
 
         public bool PortalsPlaced => portalsPlaced;
+        public bool IsPermanentlySealed => permanentlySealed;
         public Vector2 Portal1Position => portal1Position;
         public Vector2 Portal2Position => portal2Position;
 
@@ -124,6 +125,21 @@ namespace Castlevania2D.Enemies
         }
 
         private bool permanentlySealed;
+
+        public void ApplySavedState(bool savedPortalsPlaced, bool savedPermanentlySealed)
+        {
+            if (savedPermanentlySealed)
+            {
+                SealPortals();
+                return;
+            }
+
+            permanentlySealed = false;
+            if (savedPortalsPlaced)
+            {
+                SpawnPortals();
+            }
+        }
 
         private void TryRecoverPortalRefs()
         {

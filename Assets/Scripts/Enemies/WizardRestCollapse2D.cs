@@ -33,6 +33,12 @@ namespace Castlevania2D.Enemies
         private float armedElapsed;
         private float restCycleFallbackDuration = 1f;
 
+        public bool IsArmed => armed;
+        public bool AreBasketsFallen => basketsFallen;
+        public bool ArePortalsSealed => portalsSealed;
+        public bool IsFirstRestIdleCycleCompleted => firstRestIdleCycleCompleted;
+        public bool IsCollapsed => collapsed;
+
         /// <summary>
         /// Called from lever second strike only. Starts listening for rest-idle cycle
         /// and accepts basketsFallen / portalsSealed flags. First-pull must not call this.
@@ -84,6 +90,29 @@ namespace Castlevania2D.Enemies
 
             portalsSealed = true;
             Debug.Log("[WizardRestCollapse2D] Flag set: portalsSealed=true", this);
+            TryCollapse();
+        }
+
+        public void ApplySavedState(
+            bool savedArmed,
+            bool savedBasketsFallen,
+            bool savedPortalsSealed,
+            bool savedFirstRestIdleCycleCompleted,
+            bool savedCollapsed)
+        {
+            collapsed = false;
+            armed = savedArmed || savedCollapsed;
+            basketsFallen = savedBasketsFallen || savedCollapsed;
+            portalsSealed = savedPortalsSealed || savedCollapsed;
+            firstRestIdleCycleCompleted = savedFirstRestIdleCycleCompleted || savedCollapsed;
+            armedElapsed = 0f;
+            ResolveTargets();
+
+            if (armed && !savedCollapsed)
+            {
+                EnsureIdleSubscription();
+            }
+
             TryCollapse();
         }
 

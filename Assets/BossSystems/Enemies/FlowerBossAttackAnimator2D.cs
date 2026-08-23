@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Castlevania2D.Combat;
+using Castlevania2D.Save;
 using UnityEngine;
 using BossHealthComponent = global::Castlevania2D.Health.Health;
 #if UNITY_EDITOR
@@ -22,7 +23,7 @@ namespace Castlevania2D.Enemies
     /// Attack2 frame FlowerBoss_Attack2_050 launches yellow Evil Wizard projectiles
     /// in random directions; count scales with HP lost (base + 1 per N HP).
     /// </summary>
-    public sealed class FlowerBossAttackAnimator2D : MonoBehaviour
+    public sealed class FlowerBossAttackAnimator2D : MonoBehaviour, IBossSaveState
     {
         private const string Attack1SpritesFolder = "Assets/Art/Sprites/Characters/Enemies/Flower Boss/Attack1";
         private const string Attack2SpritesFolder = "Assets/Art/Sprites/Characters/Enemies/Flower Boss/Attack2";
@@ -92,6 +93,9 @@ namespace Castlevania2D.Enemies
         private Vector2 homeHitboxOffset;
         private Vector3 homeGrassLocalPosition;
         private bool hasDisappeared;
+
+        public bool HasStartedAttackSequence => hasStartedAttackSequence;
+        public bool HasDisappeared => hasDisappeared;
         private FlowerBossTentacleAttack2D tentacleAttack;
 
         private void Awake()
@@ -219,6 +223,25 @@ namespace Castlevania2D.Enemies
             }
 
             StartAttackSequence();
+        }
+
+        public void ApplySavedState(bool savedAttackStarted, bool savedDefeated)
+        {
+            if (savedDefeated)
+            {
+                isAlive = false;
+                hasDisappeared = true;
+                StopCombatSystemsForDeath();
+                gameObject.SetActive(false);
+                return;
+            }
+
+            isAlive = true;
+            hasDisappeared = false;
+            if (savedAttackStarted)
+            {
+                StartAttackSequence();
+            }
         }
 
         private void OnBossDied()

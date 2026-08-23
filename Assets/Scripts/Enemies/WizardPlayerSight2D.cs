@@ -38,6 +38,13 @@ namespace Castlevania2D.Enemies
             enabled = true;
         }
 
+        public void ApplySavedSight(bool savedHasSighted)
+        {
+            hasSighted = savedHasSighted;
+            CacheTargetIfNeeded();
+            enabled = !savedHasSighted;
+        }
+
         private void Awake()
         {
             CacheTargetIfNeeded();

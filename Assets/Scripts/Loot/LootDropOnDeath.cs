@@ -5,7 +5,7 @@ namespace Castlevania2D.Loot
 {
     /// <summary>
     /// Spawns loot pickups when Health.Died fires.
-    /// 15% chance for healing potion; fewer coins (0..2); optional Ent bonus log.
+    /// Configurable drops shared by regular enemies and bosses.
     /// </summary>
     [RequireComponent(typeof(EnemyHealth))]
     public sealed class LootDropOnDeath : MonoBehaviour
@@ -19,6 +19,10 @@ namespace Castlevania2D.Loot
         [Header("Healing potion (all mobs)")]
         [SerializeField] [Range(0f, 1f)] private float potionDropChance = 0.15f;
 
+        [Header("Mara's Tear")]
+        [SerializeField] [Range(0f, 1f)] private float maraTearDropChance = 0.05f;
+        [SerializeField] private int guaranteedMaraTearCount;
+
         [Header("Bonus (e.g. Ent only)")]
         [SerializeField] private bool dropBonusLoot;
         [SerializeField] private int bonusCount = 1;
@@ -30,6 +34,7 @@ namespace Castlevania2D.Loot
         [SerializeField] private float popAngleSpread = 55f;
         [SerializeField] private float commonPickupScale = 0.08f / 7f;
         [SerializeField] private float potionPickupScale = 0.08f * 6f / 10f;
+        [SerializeField] private float maraTearPickupScale = 0.1f;
         [SerializeField] private float bonusPickupScale = 0.064f;
         [SerializeField] private int sortingOrder = 6;
         [SerializeField] private float colliderRadius = 0.35f;
@@ -41,11 +46,23 @@ namespace Castlevania2D.Loot
         private bool dropped;
         private Sprite commonSprite;
         private Sprite potionSprite;
+        private Sprite maraTearSprite;
         private Sprite bonusSprite;
 
         private void Awake()
         {
             health = GetComponent<EnemyHealth>();
+            EnsureSpritesLoaded();
+        }
+
+        public void ConfigureBossMaraTearDrop(int tearCount)
+        {
+            commonMinCount = 0;
+            commonMaxCount = 0;
+            potionDropChance = 0f;
+            maraTearDropChance = 0f;
+            guaranteedMaraTearCount = Mathf.Max(0, tearCount);
+            dropBonusLoot = false;
             EnsureSpritesLoaded();
         }
 
@@ -108,6 +125,21 @@ namespace Castlevania2D.Loot
                 SpawnOne(LootItemId.Potion, potionSprite, origin, 0, 1);
             }
 
+            if (Random.value < maraTearDropChance)
+            {
+                SpawnOne(LootItemId.MaraTear, maraTearSprite, origin, 0, 1);
+            }
+
+            for (int i = 0; i < guaranteedMaraTearCount; i++)
+            {
+                SpawnOne(
+                    LootItemId.MaraTear,
+                    maraTearSprite,
+                    origin,
+                    i,
+                    guaranteedMaraTearCount);
+            }
+
             if (dropBonusLoot && bonusSprite != null)
             {
                 for (int i = 0; i < Mathf.Max(0, bonusCount); i++)
@@ -127,6 +159,11 @@ namespace Castlevania2D.Loot
             if (potionSprite == null)
             {
                 potionSprite = LootDropSprites.Potion;
+            }
+
+            if (maraTearSprite == null)
+            {
+                maraTearSprite = LootDropSprites.MaraTear;
             }
 
             if (dropBonusLoot && bonusSprite == null)
@@ -168,6 +205,7 @@ namespace Castlevania2D.Loot
             {
                 LootItemId.Ent => bonusPickupScale,
                 LootItemId.Potion => potionPickupScale,
+                LootItemId.MaraTear => maraTearPickupScale,
                 _ => commonPickupScale,
             };
 

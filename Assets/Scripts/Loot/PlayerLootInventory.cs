@@ -72,6 +72,7 @@ namespace Castlevania2D.Loot
 
         public int CommonCount => GetCount(LootItemId.Common);
         public int EntCount => GetCount(LootItemId.Ent);
+        public int MaraTearCount => GetCount(LootItemId.MaraTear);
 
         public void Add(LootItemId id, int amount = 1)
         {
@@ -99,6 +100,58 @@ namespace Castlevania2D.Loot
                 itemId = id,
                 count = amount,
             });
+            Changed?.Invoke();
+        }
+
+        public void EnsureMinimum(LootItemId id, int minimumAmount)
+        {
+            int amountToAdd = minimumAmount - GetCount(id);
+            if (amountToAdd > 0)
+            {
+                Add(id, amountToAdd);
+            }
+        }
+
+        public bool TryRemove(LootItemId id, int amount = 1)
+        {
+            if (amount <= 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < stacks.Count; i++)
+            {
+                if (stacks[i].itemId != id || stacks[i].count < amount)
+                {
+                    continue;
+                }
+
+                InventoryStack stack = stacks[i];
+                stack.count -= amount;
+                if (stack.count == 0)
+                {
+                    stacks.RemoveAt(i);
+                }
+                else
+                {
+                    stacks[i] = stack;
+                }
+
+                Changed?.Invoke();
+                return true;
+            }
+
+            return false;
+        }
+
+        public void Clear()
+        {
+            if (stacks.Count == 0)
+            {
+                return;
+            }
+
+            stacks.Clear();
             Changed?.Invoke();
         }
     }

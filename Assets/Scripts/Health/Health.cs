@@ -71,6 +71,12 @@ namespace Castlevania2D.Health
             HealthChanged?.Invoke(CurrentHealth, maxHealth);
         }
 
+        public void SetCurrentHealthForLoad(int value)
+        {
+            CurrentHealth = Mathf.Clamp(value, 0, maxHealth);
+            HealthChanged?.Invoke(CurrentHealth, maxHealth);
+        }
+
         /// <summary>
         /// Instantly reduces HP to zero and fires Died (bypasses damage blockers).
         /// </summary>

@@ -55,6 +55,7 @@ namespace Castlevania2D.Environment
 
         public bool HasActivated => firstAnimStarted;
         public bool CanReceiveDamage => firstAnimDone && !secondStrikeDone && !animating;
+        public int SavePhase => secondStrikeDone ? 2 : firstAnimStarted ? 1 : 0;
 
         private void Awake()
         {
@@ -279,6 +280,38 @@ namespace Castlevania2D.Environment
 
             hitCollider.isTrigger = true;
             hitCollider.enabled = true;
+        }
+
+        public void ApplySavedPhase(int savedPhase)
+        {
+            int phase = Mathf.Clamp(savedPhase, 0, 2);
+            firstAnimStarted = phase >= 1;
+            firstAnimDone = phase >= 1;
+            secondStrikeDone = phase >= 2;
+            animating = false;
+            playingRaised = false;
+            activeFrames = null;
+            frameIndex = 0;
+            frameTimer = 0f;
+
+            if (phase == 0)
+            {
+                Apply(idleSprite);
+            }
+            else
+            {
+                Sprite[] frames = phase == 1 ? activateFrames : raisedFrames;
+                if (frames != null && frames.Length > 0)
+                {
+                    Apply(frames[frames.Length - 1]);
+                }
+            }
+
+            if (hitCollider != null)
+            {
+                hitCollider.isTrigger = true;
+                hitCollider.enabled = phase == 1;
+            }
         }
 
         private void Apply(Sprite sprite)

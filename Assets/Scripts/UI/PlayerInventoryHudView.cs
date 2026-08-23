@@ -6,7 +6,7 @@ namespace Castlevania2D.UI
 {
     /// <summary>
     /// Hold-I inventory: birch frame sprite with 6x4 pixel-mapped cells.
-    /// Coins in slot 0, ent logs in slot 2; counts in the corner only.
+    /// Loot stacks fill slots in inventory order; counts appear in the corner.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerInventoryHudView : MonoBehaviour
@@ -34,6 +34,7 @@ namespace Castlevania2D.UI
         [Header("Item sprites (Resources)")]
         [SerializeField] private string commonItemResourcePath = "Items/Drop_Common";
         [SerializeField] private string entItemResourcePath = "Items/Drop_Ent";
+        [SerializeField] private string maraTearItemResourcePath = "Items/Drop_MaraTear";
 
         [Header("Layout")]
         [SerializeField] [Range(0.35f, 0.85f)] private float panelScreenFraction = 0.62f;
@@ -51,6 +52,7 @@ namespace Castlevania2D.UI
         private Sprite frameSprite;
         private Sprite commonSprite;
         private Sprite entSprite;
+        private Sprite maraTearSprite;
         private Font uiFont;
 
         private PlayerLootInventory inventory;
@@ -70,6 +72,7 @@ namespace Castlevania2D.UI
             frameSprite = LoadItemSprite(FrameResourcePath);
             commonSprite = LoadItemSprite(commonItemResourcePath);
             entSprite = LoadItemSprite(entItemResourcePath);
+            maraTearSprite = LoadItemSprite(maraTearItemResourcePath);
             CreateUiIfNeeded();
             SetVisible(false);
         }
@@ -336,6 +339,7 @@ namespace Castlevania2D.UI
             {
                 LootItemId.Common => commonSprite,
                 LootItemId.Ent => entSprite,
+                LootItemId.MaraTear => maraTearSprite,
                 _ => null,
             };
         }

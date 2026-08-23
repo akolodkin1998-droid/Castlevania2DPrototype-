@@ -48,6 +48,10 @@ namespace Castlevania2D.Level
         public int LandingCount => landingCount;
         public int MaxLandings => frameSprites != null ? frameSprites.Length - 1 : 0;
         public float DescentStepWorldY => descentStepWorldY;
+        public float AssemblyWorldY =>
+            assemblyReferenceTransform != null ? assemblyReferenceTransform.position.y : 0f;
+        public float RopeLocalScaleY => ropeTransform != null ? ropeTransform.localScale.y : 0f;
+        public float RopeLocalPositionY => ropeTransform != null ? ropeTransform.localPosition.y : 0f;
 
         private void Awake()
         {
@@ -422,6 +426,37 @@ namespace Castlevania2D.Level
             landingCount = 0;
             StopLandingAnimation();
             ApplyFrameSprite();
+        }
+
+        public void ApplySavedState(
+            int savedLandingCount,
+            float savedAssemblyWorldY,
+            float savedRopeLocalScaleY,
+            float savedRopeLocalPositionY)
+        {
+            CacheDescentTransforms();
+            landingCount = Mathf.Clamp(savedLandingCount, 0, MaxLandings);
+            StopLandingAnimation();
+
+            if (assemblyReferenceTransform != null)
+            {
+                Vector3 position = assemblyReferenceTransform.position;
+                position.y = savedAssemblyWorldY;
+                assemblyReferenceTransform.position = position;
+            }
+
+            if (ropeTransform != null)
+            {
+                Vector3 scale = ropeTransform.localScale;
+                scale.y = savedRopeLocalScaleY;
+                ropeTransform.localScale = scale;
+
+                Vector3 position = ropeTransform.localPosition;
+                position.y = savedRopeLocalPositionY;
+                ropeTransform.localPosition = position;
+            }
+
+            ApplyHoldSprite();
         }
     }
 }

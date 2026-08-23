@@ -12,6 +12,8 @@ namespace Castlevania2D.Loot
     {
         private const string PlayerObjectName = "Player_HeroKnight";
         private const string BossObjectName = "Boss_Flower";
+        private const int StartingMaraTearCount = 10;
+        private const int BossMaraTearDropCount = 5;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
@@ -69,10 +71,13 @@ namespace Castlevania2D.Loot
                 return;
             }
 
-            if (player.GetComponent<PlayerLootInventory>() == null)
+            PlayerLootInventory inventory = player.GetComponent<PlayerLootInventory>();
+            if (inventory == null)
             {
-                player.AddComponent<PlayerLootInventory>();
+                inventory = player.AddComponent<PlayerLootInventory>();
             }
+
+            inventory.EnsureMinimum(LootItemId.MaraTear, StartingMaraTearCount);
 
             if (player.GetComponent<PlayerQuickAccessInventory>() == null)
             {
@@ -91,8 +96,25 @@ namespace Castlevania2D.Loot
                     continue;
                 }
 
+                if (health.gameObject.name == BossObjectName)
+                {
+                    EnsureBossMaraTearDrop(health.gameObject);
+                    continue;
+                }
+
                 EnsureLootDrop(health.gameObject);
             }
+        }
+
+        private static void EnsureBossMaraTearDrop(GameObject boss)
+        {
+            LootDropOnDeath drop = boss.GetComponent<LootDropOnDeath>();
+            if (drop == null)
+            {
+                drop = boss.AddComponent<LootDropOnDeath>();
+            }
+
+            drop.ConfigureBossMaraTearDrop(BossMaraTearDropCount);
         }
 
         private static bool ShouldReceiveLoot(GameObject gameObject)

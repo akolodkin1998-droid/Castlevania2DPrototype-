@@ -5,5 +5,6 @@ namespace Castlevania2D.Loot
         Common = 0,
         Ent = 1,
         Potion = 2,
+        MaraTear = 3,
     }
 }

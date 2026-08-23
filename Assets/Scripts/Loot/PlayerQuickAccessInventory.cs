@@ -27,6 +27,12 @@ namespace Castlevania2D.Loot
             HealingPotionCountChanged?.Invoke(healingPotionCount);
         }
 
+        public void SetHealingPotionCount(int count)
+        {
+            healingPotionCount = Mathf.Max(0, count);
+            HealingPotionCountChanged?.Invoke(healingPotionCount);
+        }
+
         public bool TryUseHealingPotion()
         {
             if (healingPotionCount <= 0)

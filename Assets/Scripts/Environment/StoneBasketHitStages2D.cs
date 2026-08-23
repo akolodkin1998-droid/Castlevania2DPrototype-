@@ -33,10 +33,12 @@ namespace Castlevania2D.Environment
         public int MaxHits => maxHits;
         /// <summary>True after exactly <see cref="maxHits"/> successful stone hits (default 5).</summary>
         public bool IsFull => hitCount >= maxHits;
+        public bool HasFallen => hasFallen;
 
         public event System.Action Filled;
 
         private bool collapsing;
+        private bool hasFallen;
         private Vector2 collapseTarget;
         private Rigidbody2D body;
 
@@ -59,6 +61,7 @@ namespace Castlevania2D.Environment
             }
 
             collapsing = true;
+            hasFallen = true;
             collapseTarget = worldTarget;
             BeginFallAnimation();
 
@@ -122,6 +125,7 @@ namespace Castlevania2D.Environment
                 body.bodyType = RigidbodyType2D.Kinematic;
                 body.position = new Vector2(collapseTarget.x, collapseTarget.y + 0.15f);
                 collapsing = false;
+                hasFallen = true;
                 fallLoopWhileCollapsing = false;
                 if (animating && activeFrames != null && activeFrames.Length > 0)
                 {
@@ -268,6 +272,50 @@ namespace Castlevania2D.Environment
                 case 4: return hit4Frames;
                 case 5: return hit5Frames;
                 default: return null;
+            }
+        }
+
+        public void ApplySavedState(int savedHitCount, bool savedHasFallen, Vector2 savedPosition)
+        {
+            hitCount = Mathf.Clamp(savedHitCount, 0, maxHits);
+            hasFallen = savedHasFallen;
+            collapsing = false;
+            animating = false;
+            fallLoopWhileCollapsing = false;
+            frameIndex = 0;
+            frameTimer = 0f;
+            transform.position = new Vector3(savedPosition.x, savedPosition.y, transform.position.z);
+
+            if (body == null)
+            {
+                body = GetComponent<Rigidbody2D>();
+            }
+
+            if (body != null)
+            {
+                body.linearVelocity = Vector2.zero;
+                body.bodyType = savedHasFallen ? RigidbodyType2D.Kinematic : RigidbodyType2D.Static;
+            }
+
+            Sprite[] frames = savedHasFallen
+                ? CompactFrames(fallFrames)
+                : CompactFrames(GetStageFrames(hitCount));
+
+            if (hitCount == 0 && !savedHasFallen)
+            {
+                activeFrames = null;
+                if (spriteRenderer != null && idleSprite != null)
+                {
+                    spriteRenderer.sprite = idleSprite;
+                }
+
+                return;
+            }
+
+            activeFrames = frames;
+            if (frames.Length > 0)
+            {
+                ApplyFrame(frames.Length - 1);
             }
         }
 

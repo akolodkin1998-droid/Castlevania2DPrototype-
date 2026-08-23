@@ -55,6 +55,9 @@ namespace Castlevania2D.Enemies
         private bool sequenceStarted;
         private bool restForced;
 
+        public bool IsSequenceStarted => sequenceStarted;
+        public bool IsRestForced => restForced;
+
         public void EditorAssignFrames(Sprite[] attack1, Sprite[] attack2)
         {
             attack1Frames = attack1 ?? Array.Empty<Sprite>();
@@ -101,6 +104,20 @@ namespace Castlevania2D.Enemies
             if (spriteRenderer != null)
             {
                 spriteRenderer.flipX = flipX;
+            }
+        }
+
+        public void ApplySavedState(bool savedSequenceStarted, bool savedRestForced)
+        {
+            if (savedRestForced)
+            {
+                EnterRestState();
+                return;
+            }
+
+            if (savedSequenceStarted)
+            {
+                BeginAttackSequence();
             }
         }
 
