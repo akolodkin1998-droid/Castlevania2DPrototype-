@@ -109,10 +109,16 @@ namespace Castlevania2D.UI
             }
         }
 
+        public void AssignVisual(RectTransform newVisual)
+        {
+            visual = newVisual;
+            CacheRestPositions();
+        }
+
 #if UNITY_EDITOR
         public void EditorAssignVisual(RectTransform newVisual)
         {
-            visual = newVisual;
+            AssignVisual(newVisual);
         }
 #endif
     }

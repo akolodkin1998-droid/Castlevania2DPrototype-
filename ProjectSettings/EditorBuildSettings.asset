@@ -14,5 +14,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/MainMenu.unity
     guid: 6bd6b84938d5462898f2055ef65dbc9f
+  - enabled: 1
+    path: Assets/Scenes/Hnefatafl.unity
+    guid: c8f3a1b5e7d2496a8e0c4b2d1f5a7e93
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0
