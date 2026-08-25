@@ -1,3 +1,4 @@
+using Castlevania2D.Combat;
 using Castlevania2D.Loot;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,8 +6,7 @@ using UnityEngine.UI;
 namespace Castlevania2D.UI
 {
     /// <summary>
-    /// Bottom-left hotbar. Slot 1 (leftmost) shows healing potions with a corner count.
-    /// Cell bounds come from source texture pixels; the cell is squared to fit inside.
+    /// Bottom-left hotbar. Slot 1 = healing potions, slot 2 = spore bags.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(RectTransform))]
@@ -15,6 +15,7 @@ namespace Castlevania2D.UI
     {
         private const string FrameResourcePath = "Items/Inventory/1785135476_6a670174d99df-Photoroom";
         private const string PotionResourcePath = "Items/Drop_Potion";
+        private const string SporeBagResourcePath = "Items/Drop_SporeBag";
         private const string PlayerObjectName = "Player_HeroKnight";
 
         // Source PNG 1024x768 — user-measured first cell (Y from top).
@@ -24,13 +25,16 @@ namespace Castlevania2D.UI
         private const float CellTop = 294f;
         private const float CellRight = 225f;
         private const float CellBottom = 476f;
+        private const float CellStrideX = 200f;
 
         [SerializeField] private Sprite frameSprite;
         [SerializeField] private Sprite potionSprite;
+        [SerializeField] private Sprite sporeBagSprite;
         [SerializeField] private Vector2 panelSize = new Vector2(240f, 180f);
         [SerializeField] private Vector2 bottomLeftMargin = new Vector2(24f, -160.5508f);
         [SerializeField] private Vector3 panelScale = new Vector3(3f, 3f, 1f);
         [SerializeField] private KeyCode usePotionKey = KeyCode.Alpha1;
+        [SerializeField] private KeyCode useSporeBagKey = KeyCode.Alpha2;
         [SerializeField] private float iconInsetNormalized = 0.12f;
         [SerializeField] private int countFontSize = 7;
 
@@ -39,7 +43,12 @@ namespace Castlevania2D.UI
         private RectTransform potionSlotRoot;
         private Image potionIcon;
         private Text potionCountText;
+        private RectTransform sporeBagSlotRoot;
+        private Image sporeBagIcon;
+        private Text sporeBagCountText;
         private PlayerQuickAccessInventory quickAccess;
+        private PlayerLootInventory lootInventory;
+        private SporeBagActivator2D sporeBagActivator;
         private float nextBindAttemptTime;
         private Font uiFont;
 
@@ -48,8 +57,6 @@ namespace Castlevania2D.UI
             rectTransform = GetComponent<RectTransform>();
             uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-            // Важно: принудительно берём спрайты из Resources, чтобы исключить
-            // ситуацию, когда в сцене сериализовано старое значение.
             Sprite loadedFrame = LoadSprite(FrameResourcePath);
             if (loadedFrame != null)
             {
@@ -62,19 +69,26 @@ namespace Castlevania2D.UI
                 potionSprite = loadedPotion;
             }
 
+            Sprite loadedSporeBag = LoadSprite(SporeBagResourcePath);
+            if (loadedSporeBag != null)
+            {
+                sporeBagSprite = loadedSporeBag;
+            }
+
             CacheComponents();
             EnsurePotionSlot();
+            EnsureSporeBagSlot();
             ApplyLayout();
             ApplyFrameSprite();
-            RefreshPotionSlot();
+            RefreshSlots();
         }
 
         private void Start()
         {
             ApplyLayout();
             ApplyFrameSprite();
-            TryBindQuickAccess(force: true);
-            RefreshPotionSlot();
+            TryBindPlayer(force: true);
+            RefreshSlots();
             transform.SetAsLastSibling();
         }
 
@@ -82,8 +96,8 @@ namespace Castlevania2D.UI
         {
             ApplyLayout();
             ApplyFrameSprite();
-            TryBindQuickAccess(force: true);
-            RefreshPotionSlot();
+            TryBindPlayer(force: true);
+            RefreshSlots();
         }
 
         private void OnDisable()
@@ -93,14 +107,24 @@ namespace Castlevania2D.UI
 
         private void Update()
         {
-            if (quickAccess == null && Time.time >= nextBindAttemptTime)
+            if ((quickAccess == null || lootInventory == null) && Time.time >= nextBindAttemptTime)
             {
-                TryBindQuickAccess(force: false);
+                TryBindPlayer(force: false);
             }
 
             if (UnityEngine.Input.GetKeyDown(usePotionKey) && quickAccess != null)
             {
                 quickAccess.TryUseHealingPotion();
+            }
+
+            if (UnityEngine.Input.GetKeyDown(useSporeBagKey))
+            {
+                if (sporeBagActivator == null)
+                {
+                    TryBindPlayer(force: true);
+                }
+
+                sporeBagActivator?.TryActivate();
             }
         }
 
@@ -130,8 +154,10 @@ namespace Castlevania2D.UI
             rectTransform.anchoredPosition = bottomLeftMargin;
             rectTransform.localScale = panelScale;
 
-            ApplyPotionSlotLayout();
-            ApplyCountTextSharpness();
+            ApplySlotLayout(potionSlotRoot, 0);
+            ApplySlotLayout(sporeBagSlotRoot, 1);
+            ApplyCountTextSharpness(potionCountText);
+            ApplyCountTextSharpness(sporeBagCountText);
         }
 
         private void ApplyFrameSprite()
@@ -146,7 +172,29 @@ namespace Castlevania2D.UI
 
         private void EnsurePotionSlot()
         {
-            Transform existing = transform.Find("PotionSlot");
+            EnsureItemSlot(
+                "PotionSlot",
+                out potionSlotRoot,
+                out potionIcon,
+                out potionCountText);
+        }
+
+        private void EnsureSporeBagSlot()
+        {
+            EnsureItemSlot(
+                "SporeBagSlot",
+                out sporeBagSlotRoot,
+                out sporeBagIcon,
+                out sporeBagCountText);
+        }
+
+        private void EnsureItemSlot(
+            string slotName,
+            out RectTransform slotRoot,
+            out Image icon,
+            out Text countText)
+        {
+            Transform existing = transform.Find(slotName);
             GameObject slotGo;
             if (existing != null)
             {
@@ -154,11 +202,11 @@ namespace Castlevania2D.UI
             }
             else
             {
-                slotGo = new GameObject("PotionSlot", typeof(RectTransform));
+                slotGo = new GameObject(slotName, typeof(RectTransform));
                 slotGo.transform.SetParent(transform, false);
             }
 
-            potionSlotRoot = slotGo.GetComponent<RectTransform>();
+            slotRoot = slotGo.GetComponent<RectTransform>();
 
             Transform iconTransform = slotGo.transform.Find("Icon");
             if (iconTransform == null)
@@ -168,10 +216,10 @@ namespace Castlevania2D.UI
                 iconTransform = iconGo.transform;
             }
 
-            potionIcon = iconTransform.GetComponent<Image>();
-            potionIcon.raycastTarget = false;
-            potionIcon.preserveAspect = true;
-            potionIcon.color = Color.white;
+            icon = iconTransform.GetComponent<Image>();
+            icon.raycastTarget = false;
+            icon.preserveAspect = true;
+            icon.color = Color.white;
 
             RectTransform iconRect = iconTransform.GetComponent<RectTransform>();
             iconRect.anchorMin = new Vector2(iconInsetNormalized, iconInsetNormalized);
@@ -188,15 +236,15 @@ namespace Castlevania2D.UI
                 countTransform = countGo.transform;
             }
 
-            potionCountText = countTransform.GetComponent<Text>();
-            potionCountText.font = uiFont;
-            potionCountText.fontStyle = FontStyle.Bold;
-            potionCountText.color = Color.white;
-            potionCountText.alignment = TextAnchor.LowerRight;
-            potionCountText.raycastTarget = false;
-            potionCountText.horizontalOverflow = HorizontalWrapMode.Overflow;
-            potionCountText.verticalOverflow = VerticalWrapMode.Overflow;
-            potionCountText.supportRichText = false;
+            countText = countTransform.GetComponent<Text>();
+            countText.font = uiFont;
+            countText.fontStyle = FontStyle.Bold;
+            countText.color = Color.white;
+            countText.alignment = TextAnchor.LowerRight;
+            countText.raycastTarget = false;
+            countText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            countText.verticalOverflow = VerticalWrapMode.Overflow;
+            countText.supportRichText = false;
 
             Outline outline = countTransform.GetComponent<Outline>();
             if (outline == null)
@@ -214,53 +262,47 @@ namespace Castlevania2D.UI
             countRect.offsetMin = new Vector2(0f, 2f);
             countRect.offsetMax = new Vector2(-4f, -2f);
             countRect.pivot = new Vector2(1f, 0f);
-
-            ApplyCountTextSharpness();
-            ApplyPotionSlotLayout();
         }
 
-        private void ApplyCountTextSharpness()
+        private void ApplyCountTextSharpness(Text countText)
         {
-            if (potionCountText == null)
+            if (countText == null)
             {
                 return;
             }
 
-            // Parent panel is scaled up; counter that so glyphs aren't rasterized tiny then upscaled blurry.
             float scaleX = Mathf.Max(0.0001f, Mathf.Abs(panelScale.x));
             float scaleY = Mathf.Max(0.0001f, Mathf.Abs(panelScale.y));
             int rasterFontSize = Mathf.Max(1, Mathf.RoundToInt(countFontSize * scaleY));
-            potionCountText.fontSize = rasterFontSize;
-
-            RectTransform countRect = potionCountText.rectTransform;
-            countRect.localScale = new Vector3(1f / scaleX, 1f / scaleY, 1f);
+            countText.fontSize = rasterFontSize;
+            countText.rectTransform.localScale = new Vector3(1f / scaleX, 1f / scaleY, 1f);
         }
 
-        private void ApplyPotionSlotLayout()
+        private void ApplySlotLayout(RectTransform slotRoot, int cellIndex)
         {
-            if (potionSlotRoot == null)
+            if (slotRoot == null)
             {
                 return;
             }
 
-            GetSquaredCellNormalized(out Vector2 anchorMin, out Vector2 anchorMax);
-            potionSlotRoot.anchorMin = anchorMin;
-            potionSlotRoot.anchorMax = anchorMax;
-            potionSlotRoot.offsetMin = Vector2.zero;
-            potionSlotRoot.offsetMax = Vector2.zero;
-            potionSlotRoot.pivot = new Vector2(0.5f, 0.5f);
-            potionSlotRoot.localScale = Vector3.one;
+            GetSquaredCellNormalized(cellIndex, out Vector2 anchorMin, out Vector2 anchorMax);
+            slotRoot.anchorMin = anchorMin;
+            slotRoot.anchorMax = anchorMax;
+            slotRoot.offsetMin = Vector2.zero;
+            slotRoot.offsetMax = Vector2.zero;
+            slotRoot.pivot = new Vector2(0.5f, 0.5f);
+            slotRoot.localScale = Vector3.one;
         }
 
-        /// <summary>
-        /// Converts user pixel rect (Y from top) into a square cell in Unity anchors (Y from bottom).
-        /// </summary>
-        private static void GetSquaredCellNormalized(out Vector2 anchorMin, out Vector2 anchorMax)
+        private static void GetSquaredCellNormalized(
+            int cellIndex,
+            out Vector2 anchorMin,
+            out Vector2 anchorMax)
         {
             float width = CellRight - CellLeft;
             float height = CellBottom - CellTop;
             float side = Mathf.Min(width, height);
-            float centerX = (CellLeft + CellRight) * 0.5f;
+            float centerX = (CellLeft + CellRight) * 0.5f + cellIndex * CellStrideX;
             float centerYFromTop = (CellTop + CellBottom) * 0.5f;
 
             float left = centerX - side * 0.5f;
@@ -277,7 +319,7 @@ namespace Castlevania2D.UI
             anchorMax = new Vector2(xMax, yMax);
         }
 
-        private void TryBindQuickAccess(bool force)
+        private void TryBindPlayer(bool force)
         {
             if (!force && Time.time < nextBindAttemptTime)
             {
@@ -291,21 +333,36 @@ namespace Castlevania2D.UI
                 return;
             }
 
-            PlayerQuickAccessInventory found = player.GetComponent<PlayerQuickAccessInventory>();
-            if (found == null)
+            PlayerQuickAccessInventory foundQuick = player.GetComponent<PlayerQuickAccessInventory>();
+            if (foundQuick == null)
             {
-                found = player.AddComponent<PlayerQuickAccessInventory>();
+                foundQuick = player.AddComponent<PlayerQuickAccessInventory>();
             }
 
-            if (found == quickAccess)
+            PlayerLootInventory foundLoot = player.GetComponent<PlayerLootInventory>();
+            if (foundLoot == null)
             {
-                return;
+                foundLoot = player.AddComponent<PlayerLootInventory>();
             }
 
-            Unsubscribe();
-            quickAccess = found;
-            quickAccess.HealingPotionCountChanged += OnPotionCountChanged;
-            RefreshPotionSlot();
+            SporeBagActivator2D foundActivator = player.GetComponent<SporeBagActivator2D>();
+            if (foundActivator == null)
+            {
+                foundActivator = player.AddComponent<SporeBagActivator2D>();
+            }
+
+            sporeBagActivator = foundActivator;
+
+            if (foundQuick != quickAccess || foundLoot != lootInventory)
+            {
+                Unsubscribe();
+                quickAccess = foundQuick;
+                lootInventory = foundLoot;
+                quickAccess.HealingPotionCountChanged += OnPotionCountChanged;
+                lootInventory.Changed += OnLootChanged;
+            }
+
+            RefreshSlots();
         }
 
         private void Unsubscribe()
@@ -314,32 +371,62 @@ namespace Castlevania2D.UI
             {
                 quickAccess.HealingPotionCountChanged -= OnPotionCountChanged;
             }
+
+            if (lootInventory != null)
+            {
+                lootInventory.Changed -= OnLootChanged;
+            }
         }
 
         private void OnPotionCountChanged(int _)
         {
-            RefreshPotionSlot();
+            RefreshSlots();
         }
 
-        private void RefreshPotionSlot()
+        private void OnLootChanged()
         {
-            if (potionSlotRoot == null || potionIcon == null || potionCountText == null)
+            RefreshSlots();
+        }
+
+        private void RefreshSlots()
+        {
+            RefreshSlot(
+                potionSlotRoot,
+                potionIcon,
+                potionCountText,
+                potionSprite,
+                quickAccess != null ? quickAccess.HealingPotionCount : 0);
+
+            RefreshSlot(
+                sporeBagSlotRoot,
+                sporeBagIcon,
+                sporeBagCountText,
+                sporeBagSprite,
+                lootInventory != null ? lootInventory.SporeBagCount : 0);
+        }
+
+        private static void RefreshSlot(
+            RectTransform slotRoot,
+            Image icon,
+            Text countText,
+            Sprite sprite,
+            int count)
+        {
+            if (slotRoot == null || icon == null || countText == null)
             {
                 return;
             }
 
-            int count = quickAccess != null ? quickAccess.HealingPotionCount : 0;
             bool visible = count > 0;
-
-            potionSlotRoot.gameObject.SetActive(visible);
+            slotRoot.gameObject.SetActive(visible);
             if (!visible)
             {
                 return;
             }
 
-            potionIcon.enabled = potionSprite != null;
-            potionIcon.sprite = potionSprite;
-            potionCountText.text = count.ToString();
+            icon.enabled = sprite != null;
+            icon.sprite = sprite;
+            countText.text = count.ToString();
         }
 
         private static Sprite LoadSprite(string resourcePath)

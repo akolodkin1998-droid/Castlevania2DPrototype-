@@ -23,6 +23,10 @@ namespace Castlevania2D.Loot
         [SerializeField] [Range(0f, 1f)] private float maraTearDropChance = 0.05f;
         [SerializeField] private int guaranteedMaraTearCount;
 
+        [Header("Spore Bag (Mushomor)")]
+        [SerializeField] private bool guaranteeSporeBag;
+        [SerializeField] private int guaranteedSporeBagCount = 1;
+
         [Header("Bonus (e.g. Ent only)")]
         [SerializeField] private bool dropBonusLoot;
         [SerializeField] private int bonusCount = 1;
@@ -35,6 +39,7 @@ namespace Castlevania2D.Loot
         [SerializeField] private float commonPickupScale = 0.08f / 7f;
         [SerializeField] private float potionPickupScale = 0.08f * 6f / 10f;
         [SerializeField] private float maraTearPickupScale = 0.1f;
+        [SerializeField] private float sporeBagPickupScale = 0.48f;
         [SerializeField] private float bonusPickupScale = 0.064f;
         [SerializeField] private int sortingOrder = 6;
         [SerializeField] private float colliderRadius = 0.35f;
@@ -47,6 +52,7 @@ namespace Castlevania2D.Loot
         private Sprite commonSprite;
         private Sprite potionSprite;
         private Sprite maraTearSprite;
+        private Sprite sporeBagSprite;
         private Sprite bonusSprite;
 
         private void Awake()
@@ -62,6 +68,8 @@ namespace Castlevania2D.Loot
             potionDropChance = 0f;
             maraTearDropChance = 0f;
             guaranteedMaraTearCount = Mathf.Max(0, tearCount);
+            guaranteeSporeBag = false;
+            guaranteedSporeBagCount = 0;
             dropBonusLoot = false;
             EnsureSpritesLoaded();
         }
@@ -70,7 +78,8 @@ namespace Castlevania2D.Loot
             Sprite newCommonSprite,
             Sprite newPotionSprite,
             Sprite newBonusSprite,
-            bool shouldDropBonusLoot)
+            bool shouldDropBonusLoot,
+            bool shouldGuaranteeSporeBag = false)
         {
             if (newCommonSprite != null)
             {
@@ -84,6 +93,12 @@ namespace Castlevania2D.Loot
 
             bonusSprite = newBonusSprite;
             dropBonusLoot = shouldDropBonusLoot;
+            guaranteeSporeBag = shouldGuaranteeSporeBag;
+            if (shouldGuaranteeSporeBag)
+            {
+                guaranteedSporeBagCount = Mathf.Max(1, guaranteedSporeBagCount);
+            }
+
             EnsureSpritesLoaded();
         }
 
@@ -140,6 +155,15 @@ namespace Castlevania2D.Loot
                     guaranteedMaraTearCount);
             }
 
+            if (guaranteeSporeBag)
+            {
+                int sporeCount = Mathf.Max(1, guaranteedSporeBagCount);
+                for (int i = 0; i < sporeCount; i++)
+                {
+                    SpawnOne(LootItemId.SporeBag, sporeBagSprite, origin, i, sporeCount);
+                }
+            }
+
             if (dropBonusLoot && bonusSprite != null)
             {
                 for (int i = 0; i < Mathf.Max(0, bonusCount); i++)
@@ -164,6 +188,11 @@ namespace Castlevania2D.Loot
             if (maraTearSprite == null)
             {
                 maraTearSprite = LootDropSprites.MaraTear;
+            }
+
+            if (sporeBagSprite == null)
+            {
+                sporeBagSprite = LootDropSprites.SporeBag;
             }
 
             if (dropBonusLoot && bonusSprite == null)
@@ -206,6 +235,7 @@ namespace Castlevania2D.Loot
                 LootItemId.Ent => bonusPickupScale,
                 LootItemId.Potion => potionPickupScale,
                 LootItemId.MaraTear => maraTearPickupScale,
+                LootItemId.SporeBag => sporeBagPickupScale,
                 _ => commonPickupScale,
             };
 

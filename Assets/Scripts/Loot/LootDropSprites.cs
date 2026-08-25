@@ -11,11 +11,13 @@ namespace Castlevania2D.Loot
         private const string EntPath = "Items/Drop_Ent";
         private const string PotionPath = "Items/Drop_Potion";
         private const string MaraTearPath = "Items/Drop_MaraTear";
+        private const string SporeBagPath = "Items/Drop_SporeBag";
 
         private static Sprite common;
         private static Sprite ent;
         private static Sprite potion;
         private static Sprite maraTear;
+        private static Sprite sporeBag;
         private static bool loadAttempted;
 
         public static Sprite Common
@@ -54,6 +56,15 @@ namespace Castlevania2D.Loot
             }
         }
 
+        public static Sprite SporeBag
+        {
+            get
+            {
+                EnsureLoaded();
+                return sporeBag;
+            }
+        }
+
         public static bool AreReady
         {
             get
@@ -75,6 +86,7 @@ namespace Castlevania2D.Loot
             ent = Resources.Load<Sprite>(EntPath);
             potion = Resources.Load<Sprite>(PotionPath);
             maraTear = Resources.Load<Sprite>(MaraTearPath);
+            sporeBag = Resources.Load<Sprite>(SporeBagPath);
 
             if (common == null)
             {
@@ -94,6 +106,11 @@ namespace Castlevania2D.Loot
             if (maraTear == null)
             {
                 maraTear = CreateSpriteFromTexture(MaraTearPath);
+            }
+
+            if (sporeBag == null)
+            {
+                sporeBag = CreateSpriteFromTexture(SporeBagPath);
             }
         }
 

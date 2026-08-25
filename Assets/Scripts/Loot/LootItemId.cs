@@ -6,5 +6,6 @@ namespace Castlevania2D.Loot
         Ent = 1,
         Potion = 2,
         MaraTear = 3,
+        SporeBag = 4,
     }
 }

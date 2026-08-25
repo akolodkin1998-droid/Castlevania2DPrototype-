@@ -73,6 +73,7 @@ namespace Castlevania2D.Loot
         public int CommonCount => GetCount(LootItemId.Common);
         public int EntCount => GetCount(LootItemId.Ent);
         public int MaraTearCount => GetCount(LootItemId.MaraTear);
+        public int SporeBagCount => GetCount(LootItemId.SporeBag);
 
         public void Add(LootItemId id, int amount = 1)
         {

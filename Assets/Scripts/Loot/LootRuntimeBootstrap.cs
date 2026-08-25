@@ -50,6 +50,8 @@ namespace Castlevania2D.Loot
             }
 
             bool isEnt = owner.name.IndexOf("Ent", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isMushomor =
+                owner.name.IndexOf("Mushomor", System.StringComparison.OrdinalIgnoreCase) >= 0;
             LootDropOnDeath drop = owner.GetComponent<LootDropOnDeath>();
             if (drop == null)
             {
@@ -60,7 +62,8 @@ namespace Castlevania2D.Loot
                 LootDropSprites.Common,
                 LootDropSprites.Potion,
                 isEnt ? LootDropSprites.Ent : null,
-                isEnt);
+                isEnt,
+                isMushomor);
         }
 
         private static void EnsurePlayerComponents()
@@ -82,6 +85,11 @@ namespace Castlevania2D.Loot
             if (player.GetComponent<PlayerQuickAccessInventory>() == null)
             {
                 player.AddComponent<PlayerQuickAccessInventory>();
+            }
+
+            if (player.GetComponent<Castlevania2D.Combat.SporeBagActivator2D>() == null)
+            {
+                player.AddComponent<Castlevania2D.Combat.SporeBagActivator2D>();
             }
         }
 

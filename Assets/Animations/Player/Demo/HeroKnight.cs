@@ -1,9 +1,10 @@
 using UnityEngine;
 using System.Collections;
 using Castlevania2D.Combat;
+using Castlevania2D.Player;
 using PlayerHealth = Castlevania2D.Health.Health;
 
-public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface {
+public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump {
 
     [SerializeField] float      m_speed = 4.0f;
     [SerializeField] float      m_jumpForce = 7.5f;
@@ -263,11 +264,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         //Jump
         else if (Input.GetKeyDown("space") && m_grounded && !m_rolling && !isOverheadBlocking)
         {
-            m_animator.SetTrigger("Jump");
-            m_grounded = false;
-            m_animator.SetBool("Grounded", m_grounded);
-            m_body2d.linearVelocity = new Vector2(m_body2d.linearVelocity.x, m_jumpForce);
-            m_groundSensor.Disable(0.2f);
+            ForceJump();
         }
 
         // IdleBlock selects Idle Block / Idle Block Walk; false keeps normal Idle / Run.
@@ -284,6 +281,28 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_delayToIdle -= Time.deltaTime;
             if (m_delayToIdle < 0)
                 m_animator.SetInteger("AnimState", 0);
+        }
+    }
+
+    public void ForceJump(float forceMultiplier = 1f)
+    {
+        if (m_dead || m_body2d == null)
+        {
+            return;
+        }
+
+        if (m_animator != null)
+        {
+            m_animator.SetTrigger("Jump");
+            m_animator.SetBool("Grounded", false);
+        }
+
+        m_grounded = false;
+        float jumpSpeed = m_jumpForce * Mathf.Max(0f, forceMultiplier);
+        m_body2d.linearVelocity = new Vector2(m_body2d.linearVelocity.x, jumpSpeed);
+        if (m_groundSensor != null)
+        {
+            m_groundSensor.Disable(0.2f);
         }
     }
 
