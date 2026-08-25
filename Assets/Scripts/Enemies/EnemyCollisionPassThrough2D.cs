@@ -41,6 +41,11 @@ namespace Castlevania2D.Enemies
                 {
                     health.gameObject.AddComponent<EnemyCollisionPassThrough2D>();
                 }
+
+                if (health.GetComponent<EnemySpriteOverlapSort2D>() == null)
+                {
+                    health.gameObject.AddComponent<EnemySpriteOverlapSort2D>();
+                }
             }
         }
 

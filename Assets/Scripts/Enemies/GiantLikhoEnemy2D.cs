@@ -80,6 +80,9 @@ namespace Castlevania2D.Enemies
         [SerializeField] private float meleeHitboxYOffset = 1.1f;
         [SerializeField] [Min(0)] private int meleeHitStartFrame = 7;
         [SerializeField] [Min(0)] private int meleeHitEndFrame = 8;
+        [SerializeField] [Min(1)] private int minMeleePerCycle = 1;
+        [SerializeField] [Min(1)] private int maxMeleePerCycle = 2;
+        [SerializeField] [Range(0f, 1f)] private float rareTripleMeleeChance = 0.12f;
 
         private SpriteRenderer spriteRenderer;
         private Rigidbody2D body;
@@ -98,11 +101,14 @@ namespace Castlevania2D.Enemies
         private float frameTimer;
         private float cooldownRemaining;
         private float meleeCooldownRemaining;
+        private int meleeAttacksThisCycle;
+        private int meleeAttacksPlanned = 2;
         private bool isDead;
         private bool hitPlayerThisCharge;
         private bool jumpSlamDealt;
         private bool meleeHitDealt;
         private bool ignoredPlayerCollision;
+        private Vector2 authoredColliderOffset;
 
         public float AggroRadius => aggroRadius;
 
@@ -113,6 +119,10 @@ namespace Castlevania2D.Enemies
             bodyCollider = GetComponent<Collider2D>();
             boxCollider = bodyCollider as BoxCollider2D;
             health = GetComponent<EnemyHealth>();
+            if (boxCollider != null)
+            {
+                authoredColliderOffset = boxCollider.offset;
+            }
 
             body.bodyType = RigidbodyType2D.Dynamic;
             body.gravityScale = 3f;
@@ -133,13 +143,14 @@ namespace Castlevania2D.Enemies
             };
 
             state = State.Patrol;
+            RollMeleeQuota();
             ApplyFrame();
         }
 
         private void Start()
         {
             CacheTarget();
-            LowerColliderOntoGround();
+            SnapBodyOntoGround();
         }
 
         private void OnEnable()
@@ -215,10 +226,14 @@ namespace Castlevania2D.Enemies
 
             CacheTarget();
             IgnorePlayerBodyCollision();
+            if (state == State.JumpPrepare || state == State.Jumping)
+            {
+                body.linearVelocity = Vector2.zero;
+                return;
+            }
+
             if (state == State.AttackStartup
                 || state == State.WallImpact
-                || state == State.JumpPrepare
-                || state == State.Jumping
                 || state == State.MeleeAttack)
             {
                 body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
@@ -233,7 +248,8 @@ namespace Castlevania2D.Enemies
 
             bool targetInAggro = IsTargetInAggroRadius();
             bool inMeleeRange = IsTargetInMeleeRange();
-            if (targetInAggro && HasMeleeFrames() && inMeleeRange)
+            bool meleeQuotaRemaining = HasMeleeQuotaRemaining();
+            if (targetInAggro && HasMeleeFrames() && inMeleeRange && meleeQuotaRemaining)
             {
                 if (meleeCooldownRemaining <= 0f)
                 {
@@ -241,19 +257,23 @@ namespace Castlevania2D.Enemies
                     return;
                 }
 
-                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
-                int holdDirection = GetDirectionToTarget();
-                Face(holdDirection != 0 ? holdDirection : movementDirection);
-                ApplyFrame();
+                HoldInPlaceFacingTarget();
                 return;
             }
 
-            if (targetInAggro
+            bool readyToCharge = targetInAggro
                 && cooldownRemaining <= 0f
                 && HasAttackFrames()
-                && !HasObstacleAhead(GetChargeDirectionOrFacing()))
+                && !HasObstacleAhead(GetChargeDirectionOrFacing());
+            if (readyToCharge && (!HasMeleeFrames() || !meleeQuotaRemaining))
             {
                 BeginAttackStartup();
+                return;
+            }
+
+            if (targetInAggro && HasMeleeFrames() && inMeleeRange && !meleeQuotaRemaining)
+            {
+                HoldInPlaceFacingTarget();
                 return;
             }
 
@@ -468,7 +488,7 @@ namespace Castlevania2D.Enemies
             }
 
             jumpSlamDealt = true;
-            LowerColliderOntoGround();
+            SnapBodyOntoGround();
             CameraShake2D.Play(slamShakeAmplitude, slamShakeDuration);
 
             CacheTarget();
@@ -626,7 +646,7 @@ namespace Castlevania2D.Enemies
 
         private void FinishJump()
         {
-            LowerColliderOntoGround();
+            SnapBodyOntoGround();
             ReturnToPatrol();
         }
 
@@ -643,6 +663,35 @@ namespace Castlevania2D.Enemies
             }
 
             return Mathf.Abs(target.position.x - transform.position.x) <= meleeTriggerRange;
+        }
+
+        private bool HasMeleeQuotaRemaining()
+        {
+            return meleeAttacksThisCycle < meleeAttacksPlanned;
+        }
+
+        private void RollMeleeQuota()
+        {
+            int min = Mathf.Min(minMeleePerCycle, maxMeleePerCycle);
+            int max = Mathf.Max(minMeleePerCycle, maxMeleePerCycle);
+            if (Random.value < rareTripleMeleeChance)
+            {
+                meleeAttacksPlanned = 3;
+            }
+            else
+            {
+                meleeAttacksPlanned = Random.Range(min, max + 1);
+            }
+
+            meleeAttacksThisCycle = 0;
+        }
+
+        private void HoldInPlaceFacingTarget()
+        {
+            body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+            int holdDirection = GetDirectionToTarget();
+            Face(holdDirection != 0 ? holdDirection : movementDirection);
+            ApplyFrame();
         }
 
         private void BeginMeleeAttack()
@@ -751,6 +800,7 @@ namespace Castlevania2D.Enemies
         private void FinishMelee()
         {
             state = State.Patrol;
+            meleeAttacksThisCycle++;
             meleeCooldownRemaining = 0.8f;
             frameIndex = 0;
             frameTimer = 0f;
@@ -763,6 +813,7 @@ namespace Castlevania2D.Enemies
             patrolDirection = -chargeDirection;
             movementDirection = patrolDirection;
             cooldownRemaining = attackCooldown;
+            RollMeleeQuota();
             frameIndex = 0;
             frameTimer = 0f;
             ApplyFrame();
@@ -957,29 +1008,29 @@ namespace Castlevania2D.Enemies
             return deltaX > 0f ? 1 : -1;
         }
 
-        private void LowerColliderOntoGround()
+        private void SnapBodyOntoGround()
         {
             if (boxCollider == null || body == null)
             {
                 return;
             }
 
+            boxCollider.offset = authoredColliderOffset;
             Physics2D.SyncTransforms();
             if (!TryFindGroundSurfaceY(out float surfaceY))
             {
                 return;
             }
 
-            float deltaWorld = surfaceY - boxCollider.bounds.min.y;
-            float scaleY = transform.lossyScale.y;
-            if (Mathf.Abs(deltaWorld) < 0.001f || Mathf.Abs(scaleY) < 0.0001f)
+            const float groundSkin = 0.02f;
+            float deltaWorld = surfaceY + groundSkin - boxCollider.bounds.min.y;
+            if (Mathf.Abs(deltaWorld) < 0.001f)
             {
+                body.linearVelocity = new Vector2(body.linearVelocity.x, 0f);
                 return;
             }
 
-            Vector2 offset = boxCollider.offset;
-            offset.y += deltaWorld / scaleY;
-            boxCollider.offset = offset;
+            body.position += new Vector2(0f, deltaWorld);
             body.linearVelocity = new Vector2(body.linearVelocity.x, 0f);
             Physics2D.SyncTransforms();
         }
