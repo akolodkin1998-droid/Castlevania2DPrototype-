@@ -20,9 +20,9 @@ namespace Castlevania2D.Enemies
         [SerializeField] private Sprite[] attackFrames;
         [SerializeField] private float frameRate = 12f;
         [Tooltip("Start attack anim / stop chase when |Δx| ≤ this.")]
-        [SerializeField] private float attackTriggerRange = 1.0f;
-        [Tooltip("Melee damage reach during active swing frames (OverlapBox toward facing).")]
-        [SerializeField] private float attackRange = 4.0f;
+        [SerializeField] private float attackTriggerRange = 1.4f;
+        [Tooltip("Melee damage reach in front of the body during active swing frames.")]
+        [SerializeField] private float attackRange = 1.8f;
         [SerializeField] private float attackCooldown = 1.1f;
 
         [Header("Melee Hit")]
@@ -146,7 +146,8 @@ namespace Castlevania2D.Enemies
             }
 
             float distanceX = Mathf.Abs(target.position.x - transform.position.x);
-            if (distanceX > attackTriggerRange)
+            if (distanceX > attackTriggerRange ||
+                !EnemyAggroLimits.IsWithinVerticalRange(transform, target))
             {
                 return;
             }
@@ -219,8 +220,9 @@ namespace Castlevania2D.Enemies
 
             float range = Mathf.Max(0.1f, attackRange);
             float facing = GetFacingSign();
+            float bodyClearance = 0.55f;
             Vector2 origin = (Vector2)transform.position + new Vector2(0f, hitboxYOffset);
-            Vector2 center = origin + new Vector2(facing * range * 0.5f, 0f);
+            Vector2 center = origin + new Vector2(facing * (bodyClearance + range * 0.5f), 0f);
             Vector2 size = new Vector2(range, Mathf.Max(0.2f, hitboxHeight));
 
             if (targetMask.value != 0)

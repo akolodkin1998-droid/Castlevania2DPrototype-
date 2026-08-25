@@ -323,13 +323,15 @@ namespace Castlevania2D.Enemies
             float deltaY = target.position.y - transform.position.y;
             float distanceX = Mathf.Abs(deltaX);
             float distanceY = Mathf.Abs(deltaY);
+            float maxChaseY = EnemyAggroLimits.CapVerticalRange(chaseVerticalRange);
+            float maxAttackY = EnemyAggroLimits.CapVerticalRange(attackVerticalRange);
             float direction = Mathf.Sign(deltaX);
             bool inChase = distanceX <= chaseRange &&
-                           distanceY <= chaseVerticalRange &&
+                           distanceY <= maxChaseY &&
                            distanceX > stopDistance;
             bool inAttack = HasAttackFrames() &&
                             distanceX <= attackRange &&
-                            distanceY <= attackVerticalRange;
+                            distanceY <= maxAttackY;
 
             if (inAttack)
             {
@@ -1361,7 +1363,10 @@ namespace Castlevania2D.Enemies
 
         private bool IsBlockingHorizontalHit(RaycastHit2D hit)
         {
-            if (hit.collider == null || hit.collider.isTrigger || IsOwnCollider(hit.collider))
+            if (hit.collider == null
+                || hit.collider.isTrigger
+                || IsOwnCollider(hit.collider)
+                || EnemyCollisionPassThrough2D.IsEnemyBody(hit.collider))
             {
                 return false;
             }

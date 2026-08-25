@@ -758,6 +758,7 @@ public static class MushomorEnemySetupEditor
         contactSo.FindProperty("hitCooldown").floatValue = 0.5f;
         contactSo.FindProperty("onlyDamagePlayer").boolValue = true;
         contactSo.ApplyModifiedPropertiesWithoutUndo();
+        contact.enabled = false;
 
         var movement = root.AddComponent<MushomorMovement2D>();
         var attack = root.AddComponent<MushomorMeleeAttack2D>();

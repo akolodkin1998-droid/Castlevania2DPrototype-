@@ -1,3 +1,4 @@
+using Castlevania2D.Combat;
 using UnityEngine;
 
 namespace Castlevania2D.Enemies
@@ -129,6 +130,7 @@ namespace Castlevania2D.Enemies
             attack = GetComponent<MushomorMeleeAttack2D>();
             hurt = GetComponent<MushomorHurtAnimator2D>();
             ApplyStandardBodyCollider();
+            DisableBodyContactDamage();
 
             body.bodyType = RigidbodyType2D.Dynamic;
             body.gravityScale = gravityScale;
@@ -163,6 +165,7 @@ namespace Castlevania2D.Enemies
         private void Start()
         {
             ResolveTargetIfNeeded();
+            IgnorePlayerBodyCollision();
             PlaceOnGroundFromSpawn();
         }
 
@@ -218,6 +221,13 @@ namespace Castlevania2D.Enemies
                 return;
             }
 
+            if (!EnemyAggroLimits.IsWithinVerticalRange(transform, target))
+            {
+                isMoving = false;
+                StopHorizontalMotion();
+                return;
+            }
+
             float deltaX = target.position.x - transform.position.x;
             float distanceX = Mathf.Abs(deltaX);
             float direction = Mathf.Sign(deltaX);
@@ -225,16 +235,23 @@ namespace Castlevania2D.Enemies
                 ? Mathf.Max(stopDistance, attack.AttackTriggerRange)
                 : stopDistance;
 
-            // Hold ground inside melee range so attack can play; chase only while farther.
-            if (distanceX > chaseRange || distanceX <= holdRange)
+            if (distanceX > chaseRange)
             {
                 isMoving = false;
                 StopHorizontalMotion();
-                if (distanceX > 0.01f)
-                {
-                    FaceDirection(direction);
-                }
+                return;
+            }
 
+            IgnorePlayerBodyCollision();
+
+            // Walk through the player instead of parking on their collider.
+            if (distanceX <= holdRange)
+            {
+                float passDirection = GetFacingSign();
+                Vector2 passVelocity = body.linearVelocity;
+                passVelocity.x = passDirection * moveSpeed;
+                body.linearVelocity = passVelocity;
+                isMoving = true;
                 return;
             }
 
@@ -255,6 +272,48 @@ namespace Castlevania2D.Enemies
             Vector2 velocity = body.linearVelocity;
             velocity.x = 0f;
             body.linearVelocity = velocity;
+        }
+
+        private void DisableBodyContactDamage()
+        {
+            ContactDamage2D[] contacts = GetComponents<ContactDamage2D>();
+            for (int i = 0; i < contacts.Length; i++)
+            {
+                if (contacts[i] != null)
+                {
+                    Destroy(contacts[i]);
+                }
+            }
+        }
+
+        private void IgnorePlayerBodyCollision()
+        {
+            if (bodyCollider == null || target == null)
+            {
+                return;
+            }
+
+            Collider2D[] playerColliders = target.GetComponentsInChildren<Collider2D>();
+            for (int i = 0; i < playerColliders.Length; i++)
+            {
+                Collider2D playerCollider = playerColliders[i];
+                if (playerCollider == null || playerCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(bodyCollider, playerCollider, true);
+            }
+        }
+
+        private float GetFacingSign()
+        {
+            if (spriteRenderer != null && spriteRenderer.flipX)
+            {
+                return -1f;
+            }
+
+            return 1f;
         }
 
         private void ApplyZeroFrictionMaterial()

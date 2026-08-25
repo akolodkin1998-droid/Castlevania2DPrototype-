@@ -82,6 +82,7 @@ namespace Castlevania2D.Enemies
         private Transform throwAimTarget;
         private Transform pendingBasket;
         private bool pendingBasketThrow;
+        private bool hasStartedBasketAssault;
 
         public bool IsBasketModeActive
         {
@@ -99,6 +100,11 @@ namespace Castlevania2D.Enemies
 
         private bool CanThrowAtPlayer()
         {
+            if (hasStartedBasketAssault || IsBasketModeActive)
+            {
+                return false;
+            }
+
             ResolveTargetIfNeeded();
             return target != null && target.position.y >= minPlayerAttackWorldY;
         }
@@ -118,6 +124,7 @@ namespace Castlevania2D.Enemies
 
             pendingBasket = basket;
             pendingBasketThrow = true;
+            hasStartedBasketAssault = true;
         }
 
         public void SetTarget(Transform newTarget)
@@ -469,7 +476,7 @@ namespace Castlevania2D.Enemies
 
             if (phase == Phase.Cruise)
             {
-                if (IsBasketModeActive)
+                if (hasStartedBasketAssault || IsBasketModeActive)
                 {
                     TryEnterBasketAttack(next.x);
                 }

@@ -84,7 +84,8 @@ namespace Castlevania2D.Enemies
             Vector2 toTarget = target.position - transform.position;
             float distanceToTarget = Mathf.Abs(toTarget.x);
 
-            if (distanceToTarget > chaseRange)
+            if (distanceToTarget > chaseRange ||
+                !EnemyAggroLimits.IsWithinVerticalRange(transform, target))
             {
                 StopMoving();
                 return;

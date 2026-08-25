@@ -23,6 +23,8 @@ public static class GiantLikhoSetupEditor
         @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\Атака2\Подготовка к прыжку";
     private const string JumpSourceFolder =
         @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\Атака2\Прыжок";
+    private const string MeleeSourceFolder =
+        @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\Атака 3";
     private const string DestinationFolder =
         "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Walk";
     private const string AttackStartupDestinationFolder =
@@ -35,6 +37,8 @@ public static class GiantLikhoSetupEditor
         "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Attack2/Prepare";
     private const string JumpDestinationFolder =
         "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Attack2/Jump";
+    private const string MeleeDestinationFolder =
+        "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Attack3";
     private const string PrefabPath = "Assets/Prefabs/Enemies/Enemy_GiantLikho.prefab";
     private const string ScenePath = "Assets/Scenes/Prototype.unity";
     private const string ObjectName = "ОгромноеЛихо";
@@ -42,6 +46,50 @@ public static class GiantLikhoSetupEditor
     private const int MaxHealth = 200;
     private const float VisualScale = 1.35f;
     private static readonly Vector3 ScenePosition = new Vector3(14.5f, -65.7f, 0f);
+
+    [MenuItem("Tools/Castlevania 2D/Assign Giant Likho Attack 3")]
+    public static void AssignAttack3FromMenu()
+    {
+        try
+        {
+            Debug.Log(AssignAttack3ToExistingPrefab());
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    public static string AssignAttack3ToExistingPrefab()
+    {
+        EnsureFolder(MeleeDestinationFolder);
+        Sprite[] meleeFrames = ImportNumberedFrames(
+            MeleeSourceFolder,
+            MeleeDestinationFolder,
+            "GiantLikho_Attack3_",
+            expectedFrameCount: 10);
+
+        GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+        try
+        {
+            GiantLikhoEnemy2D controller = contents.GetComponent<GiantLikhoEnemy2D>();
+            if (controller == null)
+            {
+                throw new InvalidOperationException(
+                    "Enemy_GiantLikho prefab has no GiantLikhoEnemy2D.");
+            }
+
+            controller.EditorAssignMeleeFrames(meleeFrames);
+            PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        AssetDatabase.SaveAssets();
+        return $"Giant Likho Attack 3 assigned: {meleeFrames.Length} frames (collider unchanged).";
+    }
 
     [MenuItem("Tools/Castlevania 2D/Setup Giant Likho Miniboss")]
     public static void SetupFromMenu()

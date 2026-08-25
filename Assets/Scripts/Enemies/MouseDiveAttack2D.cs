@@ -22,7 +22,7 @@ namespace Castlevania2D.Enemies
 
         [Header("Target")]
         [SerializeField] private Transform target;
-        [SerializeField] private Vector2 aggroArea = new Vector2(14f, 16f);
+        [SerializeField] [Min(0.1f)] private float aggroRadius = 7f;
 
         public Transform Target => target;
 
@@ -441,8 +441,7 @@ namespace Castlevania2D.Enemies
             }
 
             Vector2 difference = (Vector2)target.position - body.position;
-            return Mathf.Abs(difference.x) <= aggroArea.x * 0.5f
-                   && Mathf.Abs(difference.y) <= aggroArea.y * 0.5f;
+            return difference.sqrMagnitude <= aggroRadius * aggroRadius;
         }
 
         private bool IsDamageTargetCollider(Collider2D other)
@@ -582,5 +581,13 @@ namespace Castlevania2D.Enemies
         {
             SetDead();
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            Gizmos.color = new Color(0.7f, 0.2f, 0.9f, 0.35f);
+            Gizmos.DrawWireSphere(transform.position, aggroRadius);
+        }
+#endif
     }
 }

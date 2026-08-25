@@ -284,3 +284,20 @@ MonoBehaviour:
   jumpDamage: 25
   slamShakeAmplitude: 0.28
   slamShakeDuration: 0.32
+  meleeFrames:
+  - {fileID: 21300000, guid: d6c454251d3e591439179e5b9cddeb03, type: 3}
+  - {fileID: 21300000, guid: 2e8f4dfd0ab0db04da5e7c38e9e571a9, type: 3}
+  - {fileID: 21300000, guid: 70d51de135784fc4b8dc62b81efd3274, type: 3}
+  - {fileID: 21300000, guid: 6753f1d3e2bcac24fb1fe80cb9a671a2, type: 3}
+  - {fileID: 21300000, guid: c855b25e8b2b6ed428d0f883b5ce0968, type: 3}
+  - {fileID: 21300000, guid: 1c2ea3cd2a8577b49b4f66a07b17d7a7, type: 3}
+  - {fileID: 21300000, guid: 2cdf2a24208feeb488523b52c17c2b2d, type: 3}
+  - {fileID: 21300000, guid: 84dd007be92dda2469db541697fa4a44, type: 3}
+  - {fileID: 21300000, guid: 70f2faa24c27c4845b0792b982168278, type: 3}
+  - {fileID: 21300000, guid: 61342f6251faa9242a0d9abd9d74441a, type: 3}
+  meleeTriggerRange: 3.2
+  meleeHitRange: 3.2
+  meleeHitboxHeight: 2.4
+  meleeHitboxYOffset: 1.1
+  meleeHitStartFrame: 7
+  meleeHitEndFrame: 8

@@ -399,8 +399,9 @@ namespace Castlevania2D.Enemies
             }
 
             Vector2 difference = (Vector2)target.position - (Vector2)transform.position;
+            float maxVertical = EnemyAggroLimits.CapVerticalRange(aggroArea.y * 0.5f);
             return Mathf.Abs(difference.x) <= aggroArea.x * 0.5f
-                   && Mathf.Abs(difference.y) <= aggroArea.y * 0.5f;
+                   && Mathf.Abs(difference.y) <= maxVertical;
         }
 
         private void FaceTarget()

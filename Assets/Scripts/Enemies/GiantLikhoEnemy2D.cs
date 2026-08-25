@@ -21,6 +21,7 @@ namespace Castlevania2D.Enemies
             WallImpact,
             JumpPrepare,
             Jumping,
+            MeleeAttack,
         }
 
         private enum ImpactPhase
@@ -71,6 +72,15 @@ namespace Castlevania2D.Enemies
         [SerializeField] [Min(0f)] private float slamShakeAmplitude = 0.28f;
         [SerializeField] [Min(0.01f)] private float slamShakeDuration = 0.32f;
 
+        [Header("Attack 3 — Melee")]
+        [SerializeField] private Sprite[] meleeFrames;
+        [SerializeField] [Min(0.1f)] private float meleeTriggerRange = 3.2f;
+        [SerializeField] [Min(0.1f)] private float meleeHitRange = 3.2f;
+        [SerializeField] [Min(0.2f)] private float meleeHitboxHeight = 2.4f;
+        [SerializeField] private float meleeHitboxYOffset = 1.1f;
+        [SerializeField] [Min(0)] private int meleeHitStartFrame = 7;
+        [SerializeField] [Min(0)] private int meleeHitEndFrame = 8;
+
         private SpriteRenderer spriteRenderer;
         private Rigidbody2D body;
         private Collider2D bodyCollider;
@@ -87,9 +97,12 @@ namespace Castlevania2D.Enemies
         private ImpactPhase impactPhase;
         private float frameTimer;
         private float cooldownRemaining;
+        private float meleeCooldownRemaining;
         private bool isDead;
         private bool hitPlayerThisCharge;
         private bool jumpSlamDealt;
+        private bool meleeHitDealt;
+        private bool ignoredPlayerCollision;
 
         public float AggroRadius => aggroRadius;
 
@@ -157,6 +170,11 @@ namespace Castlevania2D.Enemies
                 cooldownRemaining -= Time.deltaTime;
             }
 
+            if (meleeCooldownRemaining > 0f)
+            {
+                meleeCooldownRemaining -= Time.deltaTime;
+            }
+
             switch (state)
             {
                 case State.Patrol:
@@ -181,6 +199,9 @@ namespace Castlevania2D.Enemies
                 case State.Jumping:
                     AdvanceJump(Time.deltaTime);
                     break;
+                case State.MeleeAttack:
+                    AdvanceMelee(Time.deltaTime);
+                    break;
             }
         }
 
@@ -193,10 +214,12 @@ namespace Castlevania2D.Enemies
             }
 
             CacheTarget();
+            IgnorePlayerBodyCollision();
             if (state == State.AttackStartup
                 || state == State.WallImpact
                 || state == State.JumpPrepare
-                || state == State.Jumping)
+                || state == State.Jumping
+                || state == State.MeleeAttack)
             {
                 body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
                 return;
@@ -209,6 +232,22 @@ namespace Castlevania2D.Enemies
             }
 
             bool targetInAggro = IsTargetInAggroRadius();
+            bool inMeleeRange = IsTargetInMeleeRange();
+            if (targetInAggro && HasMeleeFrames() && inMeleeRange)
+            {
+                if (meleeCooldownRemaining <= 0f)
+                {
+                    BeginMeleeAttack();
+                    return;
+                }
+
+                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+                int holdDirection = GetDirectionToTarget();
+                Face(holdDirection != 0 ? holdDirection : movementDirection);
+                ApplyFrame();
+                return;
+            }
+
             if (targetInAggro
                 && cooldownRemaining <= 0f
                 && HasAttackFrames()
@@ -591,6 +630,133 @@ namespace Castlevania2D.Enemies
             ReturnToPatrol();
         }
 
+        private bool HasMeleeFrames()
+        {
+            return meleeFrames != null && meleeFrames.Length > 0;
+        }
+
+        private bool IsTargetInMeleeRange()
+        {
+            if (target == null || !EnemyAggroLimits.IsWithinVerticalRange(transform, target))
+            {
+                return false;
+            }
+
+            return Mathf.Abs(target.position.x - transform.position.x) <= meleeTriggerRange;
+        }
+
+        private void BeginMeleeAttack()
+        {
+            chargeDirection = GetChargeDirectionOrFacing();
+            state = State.MeleeAttack;
+            frameIndex = 0;
+            frameTimer = 0f;
+            meleeHitDealt = false;
+            body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+            Face(chargeDirection);
+            ApplyAnimationFrame(meleeFrames);
+            TryMeleeHitIfActiveFrame();
+        }
+
+        private void AdvanceMelee(float deltaTime)
+        {
+            if (meleeFrames == null || meleeFrames.Length == 0)
+            {
+                FinishMelee();
+                return;
+            }
+
+            frameTimer += deltaTime;
+            float frameDuration = 1f / Mathf.Max(1f, attackFrameRate);
+            while (frameTimer >= frameDuration)
+            {
+                frameTimer -= frameDuration;
+                if (frameIndex >= meleeFrames.Length - 1)
+                {
+                    FinishMelee();
+                    return;
+                }
+
+                frameIndex++;
+                ApplyAnimationFrame(meleeFrames);
+                TryMeleeHitIfActiveFrame();
+            }
+        }
+
+        private void TryMeleeHitIfActiveFrame()
+        {
+            if (meleeHitDealt)
+            {
+                return;
+            }
+
+            int start = Mathf.Min(meleeHitStartFrame, meleeHitEndFrame);
+            int end = Mathf.Max(meleeHitStartFrame, meleeHitEndFrame);
+            if (frameIndex < start || frameIndex > end)
+            {
+                return;
+            }
+
+            float facing = chargeDirection != 0 ? chargeDirection : (spriteRenderer != null && spriteRenderer.flipX ? -1f : 1f);
+            Vector2 origin = (Vector2)transform.position + new Vector2(0f, meleeHitboxYOffset);
+            Vector2 size = new Vector2(Mathf.Max(0.1f, meleeHitRange), Mathf.Max(0.2f, meleeHitboxHeight));
+            Vector2 center = origin + new Vector2(facing * size.x * 0.5f, 0f);
+            int count = Physics2D.OverlapBox(
+                center,
+                size,
+                0f,
+                attackOverlapFilter,
+                AttackOverlapBuffer);
+
+            for (int i = 0; i < count; i++)
+            {
+                Collider2D hit = AttackOverlapBuffer[i];
+                if (hit == null || !IsTargetCollider(hit))
+                {
+                    continue;
+                }
+
+                meleeHitDealt = true;
+                ApplyMeleeHit(hit, center);
+                return;
+            }
+        }
+
+        private void ApplyMeleeHit(Collider2D hit, Vector2 origin)
+        {
+            IDamageable damageable = hit.GetComponentInParent<IDamageable>();
+            if (damageable == null || !damageable.CanReceiveDamage)
+            {
+                return;
+            }
+
+            Vector2 hitPoint = hit.ClosestPoint(origin);
+            DamageResult result = damageable.ReceiveDamage(
+                new DamageInfo(jumpDamage, gameObject, hitPoint, Vector2.up));
+            if (result != DamageResult.Applied)
+            {
+                return;
+            }
+
+            CombatKnockbackReceiver2D knockback =
+                hit.GetComponentInParent<CombatKnockbackReceiver2D>();
+            if (knockback != null)
+            {
+                knockback.ApplyKnockback(
+                    new Vector2(0f, knockbackUpwardSpeed),
+                    knockbackDuration);
+            }
+        }
+
+        private void FinishMelee()
+        {
+            state = State.Patrol;
+            meleeCooldownRemaining = 0.8f;
+            frameIndex = 0;
+            frameTimer = 0f;
+            ApplyFrame();
+        }
+
         private void ReturnToPatrol()
         {
             state = State.Patrol;
@@ -766,8 +932,12 @@ namespace Castlevania2D.Enemies
 
         private bool IsTargetInAggroRadius()
         {
-            return target != null
-                   && ((Vector2)(target.position - transform.position)).sqrMagnitude
+            if (target == null || !EnemyAggroLimits.IsWithinVerticalRange(transform, target))
+            {
+                return false;
+            }
+
+            return ((Vector2)(target.position - transform.position)).sqrMagnitude
                    <= aggroRadius * aggroRadius;
         }
 
@@ -836,7 +1006,8 @@ namespace Castlevania2D.Enemies
                 if (hitCollider == null
                     || hitCollider == bodyCollider
                     || hitCollider.transform.IsChildOf(transform)
-                    || IsTargetCollider(hitCollider))
+                    || IsTargetCollider(hitCollider)
+                    || EnemyCollisionPassThrough2D.IsEnemyBody(hitCollider))
                 {
                     continue;
                 }
@@ -890,7 +1061,8 @@ namespace Castlevania2D.Enemies
                 if (hit == null
                     || hit == bodyCollider
                     || hit.transform.IsChildOf(transform)
-                    || IsTargetCollider(hit))
+                    || IsTargetCollider(hit)
+                    || EnemyCollisionPassThrough2D.IsEnemyBody(hit))
                 {
                     continue;
                 }
@@ -990,6 +1162,28 @@ namespace Castlevania2D.Enemies
             }
         }
 
+        private void IgnorePlayerBodyCollision()
+        {
+            if (ignoredPlayerCollision || bodyCollider == null || target == null)
+            {
+                return;
+            }
+
+            Collider2D[] playerColliders = target.GetComponentsInChildren<Collider2D>();
+            for (int i = 0; i < playerColliders.Length; i++)
+            {
+                Collider2D playerCollider = playerColliders[i];
+                if (playerCollider == null || playerCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(bodyCollider, playerCollider, true);
+            }
+
+            ignoredPlayerCollision = true;
+        }
+
         private void OnDied()
         {
             isDead = true;
@@ -1004,7 +1198,8 @@ namespace Castlevania2D.Enemies
             Sprite[] charge,
             Sprite[] impact,
             Sprite[] jumpPrepare = null,
-            Sprite[] jump = null)
+            Sprite[] jump = null,
+            Sprite[] melee = null)
         {
             walkFrames = walk ?? System.Array.Empty<Sprite>();
             attackStartupFrames = startup ?? System.Array.Empty<Sprite>();
@@ -1012,6 +1207,15 @@ namespace Castlevania2D.Enemies
             wallImpactFrames = impact ?? System.Array.Empty<Sprite>();
             jumpPrepareFrames = jumpPrepare ?? System.Array.Empty<Sprite>();
             jumpFrames = jump ?? System.Array.Empty<Sprite>();
+            if (melee != null)
+            {
+                meleeFrames = melee;
+            }
+        }
+
+        public void EditorAssignMeleeFrames(Sprite[] melee)
+        {
+            meleeFrames = melee ?? System.Array.Empty<Sprite>();
         }
 
         private void OnDrawGizmosSelected()

@@ -25,8 +25,7 @@ public static class MouseEnemySetupEditor
     private const int MaxHealth = 5;
     private const float FrameRate = 12f;
     private const float VisualScale = 0.78f;
-    private const float AggroHorizontalSpan = 14f;
-    private const float AggroVerticalSpan = 16f;
+    private const float AggroRadius = 7f;
     private const float KnockbackDistance = 4f;
     private const float KnockbackSpeed = 7f;
     private const float KnockbackDuration = 0.6f;
@@ -349,7 +348,7 @@ public static class MouseEnemySetupEditor
         AssignSpriteArray(createdDiveSerialized, "knockbackFrames", knockbackFrames);
         createdDiveSerialized.FindProperty("frameRate").floatValue = FrameRate;
         createdDiveSerialized.FindProperty("knockbackFrameRate").floatValue = FrameRate;
-        createdDiveSerialized.FindProperty("aggroArea").vector2Value = new Vector2(AggroHorizontalSpan, AggroVerticalSpan);
+        createdDiveSerialized.FindProperty("aggroRadius").floatValue = AggroRadius;
         createdDiveSerialized.FindProperty("diveSpeed").floatValue = 5.5f;
         createdDiveSerialized.FindProperty("contactRecoilDistance").floatValue = 1.25f;
         createdDiveSerialized.FindProperty("contactRecoilSpeed").floatValue = 6f;

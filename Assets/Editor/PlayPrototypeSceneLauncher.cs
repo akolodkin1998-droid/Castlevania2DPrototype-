@@ -14,6 +14,15 @@ public static class PlayPrototypeSceneLauncher
     static PlayPrototypeSceneLauncher()
     {
         EditorApplication.delayCall += TryLaunchFromFlag;
+        EditorApplication.update += PollLaunchFlag;
+    }
+
+    private static void PollLaunchFlag()
+    {
+        if (File.Exists(FlagPath))
+        {
+            TryLaunchFromFlag();
+        }
     }
 
     [MenuItem("Tools/Castlevania 2D/Play Prototype Scene")]
