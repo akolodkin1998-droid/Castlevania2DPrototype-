@@ -16,15 +16,13 @@ public static class UndergroundLinesSetupEditor
     private const string DestFolder = "Assets/Art/Backgrounds/Underground/Lines";
     private const string FlagPath = "Temp/setup_underground_lines.flag";
     private const string ReplaceRootsFlagPath = "Temp/replace_roots03_with_layer3.flag";
+    private const string ReplaceLine3FlagPath = "Temp/replace_underground_line3.flag";
+    private const string ReplaceLine4FlagPath = "Temp/replace_underground_line4.flag";
     private const string GroupName = "BackgroundUnderground";
     private const string ForestGroupName = "Background (1)";
     private const string Layer3AssetPath = DestFolder + "/UndergroundLine3_Far.png";
-    private static readonly Vector2 RootsPlateWorldSize = new Vector2(21.5f, 12f);
-    private static readonly string[] RootsPlateNames =
-    {
-        "Roots_Background_03 (6)",
-        "Roots_Background_03 (7)"
-    };
+    private const string Layer4AssetPath = DestFolder + "/UndergroundLine4_soFar.png";
+    private const string DirtPlateAssetPath = Layer4AssetPath;
     private const float PixelsPerUnit = 32f / 0.75f;
     private const int NearSortingOrder = -100;
     private static readonly Vector3 LayerLocalPosition = new Vector3(20f, -61.6f, 0f);
@@ -41,6 +39,36 @@ public static class UndergroundLinesSetupEditor
     {
         EditorApplication.delayCall += TrySetupFromFlag;
         EditorApplication.delayCall += TryReplaceRootsFromFlag;
+        EditorApplication.delayCall += TryReplaceLine3FromFlag;
+        EditorApplication.delayCall += TryReplaceLine4FromFlag;
+        EditorApplication.update += PollLine3Flag;
+        EditorApplication.update += PollLine4Flag;
+    }
+
+    private static void PollLine3Flag()
+    {
+        if (!File.Exists(ReplaceLine3FlagPath) ||
+            EditorApplication.isCompiling ||
+            EditorApplication.isUpdating ||
+            EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryReplaceLine3FromFlag();
+    }
+
+    private static void PollLine4Flag()
+    {
+        if (!File.Exists(ReplaceLine4FlagPath) ||
+            EditorApplication.isCompiling ||
+            EditorApplication.isUpdating ||
+            EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryReplaceLine4FromFlag();
     }
 
     [MenuItem("Tools/Castlevania 2D/Setup Underground Cave Backgrounds")]
@@ -103,6 +131,109 @@ public static class UndergroundLinesSetupEditor
         }
     }
 
+    private static void TryReplaceLine3FromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(ReplaceLine3FlagPath))
+        {
+            return;
+        }
+
+        File.Delete(ReplaceLine3FlagPath);
+        try
+        {
+            Debug.Log(ApplySloy3ToFarLayer());
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    private static void TryReplaceLine4FromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(ReplaceLine4FlagPath))
+        {
+            return;
+        }
+
+        File.Delete(ReplaceLine4FlagPath);
+        try
+        {
+            Debug.Log(ApplyZemlyaToLine4());
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Replace Underground Line 4 With Zemlya")]
+    public static void ReplaceLine4Menu()
+    {
+        try
+        {
+            EditorUtility.DisplayDialog("Underground Line 4", ApplyZemlyaToLine4(), "OK");
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+            EditorUtility.DisplayDialog("Underground Line 4", "Failed:\n" + exception.Message, "OK");
+        }
+    }
+
+    public static string ApplyZemlyaToLine4()
+    {
+        CopyLine4FromDesktop();
+        AssetDatabase.Refresh();
+        ConfigureAsSprite(Layer4AssetPath);
+
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid() || !scene.isLoaded || scene.path != ScenePath)
+        {
+            scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        }
+
+        int rebound = RebindLine4Sprites(scene);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        AssetDatabase.SaveAssets();
+        return "UndergroundLine4_soFar now uses Земля.png. Rebound " + rebound +
+               " objects. UndergroundLine3_Far was not changed.";
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Replace Underground Line 3 With Sloy3")]
+    public static void ReplaceLine3Menu()
+    {
+        try
+        {
+            EditorUtility.DisplayDialog("Underground Line 3", ApplySloy3ToFarLayer(), "OK");
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+            EditorUtility.DisplayDialog("Underground Line 3", "Failed:\n" + exception.Message, "OK");
+        }
+    }
+
+    public static string ApplySloy3ToFarLayer()
+    {
+        CopyLayer3FromDesktop();
+        AssetDatabase.Refresh();
+        ConfigureAsSprite(Layer3AssetPath);
+
+        Scene scene = SceneManager.GetActiveScene();
+        if (!scene.IsValid() || !scene.isLoaded || scene.path != ScenePath)
+        {
+            scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        }
+
+        int rebound = RebindForestDirtPlates(scene);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        AssetDatabase.SaveAssets();
+        return "UndergroundLine3_Far now uses ПодъземьеСлой3.png. Forest dirt plates rebound: " + rebound + ".";
+    }
+
     [MenuItem("Tools/Castlevania 2D/Replace Roots 03 (6)(7) With Underground Layer 3")]
     public static void ReplaceRootsMenu()
     {
@@ -121,11 +252,9 @@ public static class UndergroundLinesSetupEditor
     {
         CopyLayer3FromDesktop();
         AssetDatabase.Refresh();
-        ConfigureAsSprite(Layer3AssetPath);
-        Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(Layer3AssetPath);
-        if (sprite == null)
+        if (File.Exists(ToFullPath(DirtPlateAssetPath)))
         {
-            throw new FileNotFoundException("Missing sprite " + Layer3AssetPath);
+            ConfigureAsSprite(DirtPlateAssetPath);
         }
 
         Scene scene = SceneManager.GetActiveScene();
@@ -134,62 +263,75 @@ public static class UndergroundLinesSetupEditor
             scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         }
 
-        GameObject forestGroup = FindNamed(scene, ForestGroupName);
-        if (forestGroup == null)
-        {
-            throw new InvalidDataException(ForestGroupName + " not found in Prototype.");
-        }
-
-        float nativeWidth = sprite.rect.width / sprite.pixelsPerUnit;
-        float nativeHeight = sprite.rect.height / sprite.pixelsPerUnit;
-        var plateScale = new Vector3(
-            RootsPlateWorldSize.x / Mathf.Max(0.01f, nativeWidth),
-            RootsPlateWorldSize.y / Mathf.Max(0.01f, nativeHeight),
-            1f);
-
-        int replaced = 0;
-        for (int i = 0; i < RootsPlateNames.Length; i++)
-        {
-            Transform plate = forestGroup.transform.Find(RootsPlateNames[i]);
-            if (plate == null)
-            {
-                string alreadyReplaced = i == 0
-                    ? "UndergroundLine3_Far (6)"
-                    : "UndergroundLine3_Far (7)";
-                plate = forestGroup.transform.Find(alreadyReplaced);
-            }
-
-            if (plate == null)
-            {
-                continue;
-            }
-
-            plate.name = i == 0 ? "UndergroundLine3_Far (6)" : "UndergroundLine3_Far (7)";
-            plate.localScale = plateScale;
-            SpriteRenderer renderer = plate.GetComponent<SpriteRenderer>();
-            if (renderer == null)
-            {
-                renderer = plate.gameObject.AddComponent<SpriteRenderer>();
-            }
-
-            renderer.sprite = sprite;
-            renderer.drawMode = SpriteDrawMode.Simple;
-            renderer.color = Color.white;
-            plate.gameObject.SetActive(true);
-            replaced++;
-        }
-
-        if (replaced == 0)
+        int rebound = RebindForestDirtPlates(scene);
+        if (rebound == 0)
         {
             throw new InvalidDataException(
-                "Roots_Background_03 (6)/(7) not found under " + ForestGroupName + ".");
+                "Forest dirt plates not found under " + ForestGroupName + ".");
         }
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
-        return "Replaced " + replaced + " Roots_Background_03 plates under " +
-               ForestGroupName + " with " + Layer3AssetPath + ".";
+        return "Rebound " + rebound + " forest dirt plates to " + DirtPlateAssetPath + ".";
+    }
+
+    private static int RebindForestDirtPlates(Scene scene)
+    {
+        Sprite dirt = AssetDatabase.LoadAssetAtPath<Sprite>(DirtPlateAssetPath);
+        if (dirt == null)
+        {
+            return 0;
+        }
+
+        int rebound = 0;
+        GameObject[] roots = scene.GetRootGameObjects();
+        for (int r = 0; r < roots.Length; r++)
+        {
+            SpriteRenderer[] renderers = roots[r].GetComponentsInChildren<SpriteRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                SpriteRenderer renderer = renderers[i];
+                if (renderer == null || !renderer.gameObject.name.StartsWith("UndergroundLine4_soFar"))
+                {
+                    continue;
+                }
+
+                renderer.sprite = dirt;
+                rebound++;
+            }
+        }
+
+        return rebound;
+    }
+
+    private static int RebindLine4Sprites(Scene scene)
+    {
+        return RebindForestDirtPlates(scene);
+    }
+
+    private static void CopyLine4FromDesktop()
+    {
+        string[] sourceFolders =
+        {
+            Path.Combine(
+                System.Environment.GetFolderPath(System.Environment.SpecialFolder.DesktopDirectory),
+                "Персонаж",
+                "Бэкграунд ФОН",
+                "Подъземье"),
+            Path.Combine(
+                System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile),
+                "OneDrive",
+                "Рабочий стол",
+                "Персонаж",
+                "Бэкграунд ФОН",
+                "Подъземье")
+        };
+
+        for (int i = 0; i < sourceFolders.Length; i++)
+        {
+            CopyIfPresent(Path.Combine(sourceFolders[i], "Земля.png"), Layer4AssetPath);
+        }
     }
 
     private static void CopyLayer3FromDesktop()
@@ -213,7 +355,7 @@ public static class UndergroundLinesSetupEditor
         for (int i = 0; i < sourceFolders.Length; i++)
         {
             CopyIfPresent(Path.Combine(sourceFolders[i], "ПодъземьеСлой3.png"), Layer3AssetPath);
-            CopyIfPresent(Path.Combine(sourceFolders[i], "Земля.png"), Layer3AssetPath);
+            CopyIfPresent(Path.Combine(sourceFolders[i], "Земля.png"), Layer4AssetPath);
         }
     }
 
@@ -271,7 +413,7 @@ public static class UndergroundLinesSetupEditor
             CopyIfPresent(Path.Combine(desktop, "ПодъземьеСлой1.png"), DestFolder + "/UndergroundLine1_Near.png");
             CopyIfPresent(Path.Combine(desktop, "ПодъземьеСлой2.png"), DestFolder + "/UndergroundLine2_Mid.png");
             CopyIfPresent(Path.Combine(desktop, "ПодъземьеСлой3.png"), DestFolder + "/UndergroundLine3_Far.png");
-            CopyIfPresent(Path.Combine(desktop, "Земля.png"), DestFolder + "/UndergroundLine3_Far.png");
+            CopyIfPresent(Path.Combine(desktop, "Земля.png"), Layer4AssetPath);
         }
     }
 
@@ -425,13 +567,15 @@ public static class UndergroundLinesSetupEditor
         importer.alphaIsTransparency = true;
         importer.npotScale = TextureImporterNPOTScale.None;
         importer.filterMode = FilterMode.Point;
-        importer.wrapMode = TextureWrapMode.Repeat;
+        importer.wrapModeU = TextureWrapMode.Repeat;
+        importer.wrapModeV = TextureWrapMode.Clamp;
         importer.textureCompression = TextureImporterCompression.Uncompressed;
 
         var settings = new TextureImporterSettings();
         importer.ReadTextureSettings(settings);
         settings.spriteAlignment = (int)SpriteAlignment.Center;
         settings.spriteMeshType = SpriteMeshType.FullRect;
+        settings.spriteExtrude = 0;
         settings.spriteGenerateFallbackPhysicsShape = false;
         importer.SetTextureSettings(settings);
 
