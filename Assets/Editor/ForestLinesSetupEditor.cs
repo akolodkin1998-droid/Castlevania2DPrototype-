@@ -15,6 +15,7 @@ public static class ForestLinesSetupEditor
     private const string ScenePath = "Assets/Scenes/Prototype.unity";
     private const string DestFolder = "Assets/Art/Backgrounds/Forest/Lines";
     private const string FlagPath = "Temp/setup_forest_lines.flag";
+    private const string ParallaxFlagPath = "Temp/ensure_forest_parallax.flag";
     private const string BackgroundRootName = "Background";
     private const string ForestGroupName = "Background (1)";
     private const float PixelsPerUnit = 32f / 0.75f;
@@ -33,6 +34,8 @@ public static class ForestLinesSetupEditor
     static ForestLinesSetupEditor()
     {
         EditorApplication.delayCall += TrySetupFromFlag;
+        EditorApplication.delayCall += TryEnsureForestParallaxFromFlag;
+        EditorApplication.update += PollForestParallaxFlag;
     }
 
     [MenuItem("Tools/Castlevania 2D/Setup Forest Line Backgrounds")]
@@ -70,6 +73,124 @@ public static class ForestLinesSetupEditor
         Directory.CreateDirectory("Temp");
         File.WriteAllText(FlagPath, System.DateTime.UtcNow.ToString("O"));
         TrySetupFromFlag();
+    }
+
+    public static void RequestForestParallax()
+    {
+        Directory.CreateDirectory("Temp");
+        File.WriteAllText(ParallaxFlagPath, System.DateTime.UtcNow.ToString("O"));
+        TryEnsureForestParallaxFromFlag();
+    }
+
+    private static void PollForestParallaxFlag()
+    {
+        if (!File.Exists(ParallaxFlagPath) ||
+            EditorApplication.isCompiling ||
+            EditorApplication.isUpdating ||
+            EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryEnsureForestParallaxFromFlag();
+    }
+
+    private static void TryEnsureForestParallaxFromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(ParallaxFlagPath))
+        {
+            return;
+        }
+
+        File.Delete(ParallaxFlagPath);
+        try
+        {
+            Debug.Log(EnsureForestParallaxOnly());
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Ensure Forest Parallax")]
+    public static void EnsureForestParallaxMenu()
+    {
+        try
+        {
+            EditorUtility.DisplayDialog("Forest Parallax", EnsureForestParallaxOnly(), "OK");
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+            EditorUtility.DisplayDialog("Forest Parallax", "Failed:\n" + exception.Message, "OK");
+        }
+    }
+
+    public static string EnsureForestParallaxOnly()
+    {
+        Scene scene = FindPrototypeScene();
+        if (!scene.IsValid() || !scene.isLoaded)
+        {
+            return "Prototype scene is not loaded. Open it and run Tools → Castlevania 2D → Ensure Forest Parallax.";
+        }
+
+        GameObject group = FindForestGroup(scene);
+        if (group == null)
+        {
+            return "No Background (1) in Prototype.";
+        }
+
+        bool alreadyHad = group.GetComponent<SceneBackgroundParallax2D>() != null;
+        EnsureParallax(group);
+        if (!alreadyHad)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+        }
+
+        return alreadyHad
+            ? "Background (1) already had parallax."
+            : "Parallax on Background (1): ForestLine 1/2/3, Sky, UndergroundLine4.";
+    }
+
+    private static Scene FindPrototypeScene()
+    {
+        Scene active = SceneManager.GetActiveScene();
+        if (active.path == ScenePath)
+        {
+            return active;
+        }
+
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            Scene scene = SceneManager.GetSceneAt(i);
+            if (scene.path == ScenePath)
+            {
+                return scene;
+            }
+        }
+
+        return default;
+    }
+
+    private static GameObject FindForestGroup(Scene scene)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            if (root.name == ForestGroupName)
+            {
+                return root;
+            }
+
+            Transform nested = FindNamedRecursive(root.transform, ForestGroupName);
+            if (nested != null)
+            {
+                return nested.gameObject;
+            }
+        }
+
+        return null;
     }
 
     private static void TrySetupFromFlag()
@@ -119,6 +240,7 @@ public static class ForestLinesSetupEditor
         GameObject group = FindOrCreateForestGroup(scene);
         HideLegacyForestChildren(group);
         PlaceLayers(group);
+        EnsureParallax(group);
         SceneBackgroundParallaxSetupEditor.EnsureInScene(scene);
         return "Replaced Background (1) with ForestLine 1/2/3 (near / mid / far) and parallax.";
     }
@@ -201,6 +323,64 @@ public static class ForestLinesSetupEditor
         group.transform.localPosition = GroupLocalPosition;
         group.transform.localRotation = Quaternion.identity;
         group.transform.localScale = Vector3.one;
+    }
+
+    private static void EnsureParallax(GameObject group)
+    {
+        SceneBackgroundParallax2D parallax = group.GetComponent<SceneBackgroundParallax2D>();
+        if (parallax == null)
+        {
+            parallax = group.AddComponent<SceneBackgroundParallax2D>();
+        }
+
+        SerializedObject so = new SerializedObject(parallax);
+        SerializedProperty cameraProperty = so.FindProperty("cameraTransform");
+        SerializedProperty affectY = so.FindProperty("affectY");
+        SerializedProperty overrides = so.FindProperty("followOverrides");
+
+        Camera camera = Camera.main;
+        if (camera != null && cameraProperty != null)
+        {
+            cameraProperty.objectReferenceValue = camera.transform;
+        }
+
+        if (affectY != null)
+        {
+            affectY.boolValue = false;
+        }
+
+        EnsureLine4FollowOverride(overrides);
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void EnsureLine4FollowOverride(SerializedProperty overrides)
+    {
+        if (overrides == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < overrides.arraySize; i++)
+        {
+            SerializedProperty rule = overrides.GetArrayElementAtIndex(i);
+            SerializedProperty prefix = rule.FindPropertyRelative("namePrefix");
+            if (prefix != null && prefix.stringValue == "UndergroundLine4")
+            {
+                SerializedProperty follow = rule.FindPropertyRelative("cameraFollow");
+                if (follow != null)
+                {
+                    follow.floatValue = 0.48f;
+                }
+
+                return;
+            }
+        }
+
+        int index = overrides.arraySize;
+        overrides.arraySize++;
+        SerializedProperty created = overrides.GetArrayElementAtIndex(index);
+        created.FindPropertyRelative("namePrefix").stringValue = "UndergroundLine4";
+        created.FindPropertyRelative("cameraFollow").floatValue = 0.48f;
     }
 
     private static GameObject FindOrCreateForestGroup(Scene scene)

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Castlevania2D.Level
 {
@@ -75,15 +76,61 @@ namespace Castlevania2D.Level
 
         private void CollectLayers()
         {
+            Transform extraRoot = FindUnownedForestGroup();
+
             layerCount = 0;
             CountMatching(transform);
+            if (extraRoot != null)
+            {
+                CountMatching(extraRoot);
+            }
+
             layers = layerCount > 0 ? new Transform[layerCount] : System.Array.Empty<Transform>();
             origins = layerCount > 0 ? new Vector3[layerCount] : System.Array.Empty<Vector3>();
             follows = layerCount > 0 ? new float[layerCount] : System.Array.Empty<float>();
 
             int write = 0;
             FillMatching(transform, ref write);
+            if (extraRoot != null)
+            {
+                FillMatching(extraRoot, ref write);
+            }
+
             SortByHierarchyDepth();
+        }
+
+        private Transform FindUnownedForestGroup()
+        {
+            const string ForestGroupName = "Background (1)";
+            if (name == ForestGroupName)
+            {
+                return null;
+            }
+
+            Scene scene = gameObject.scene;
+            if (!scene.IsValid())
+            {
+                return null;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                GameObject root = roots[i];
+                if (root.name != ForestGroupName)
+                {
+                    continue;
+                }
+
+                if (root.GetComponent<SceneBackgroundParallax2D>() != null)
+                {
+                    return null;
+                }
+
+                return root.transform;
+            }
+
+            return null;
         }
 
         private void CountMatching(Transform current)
