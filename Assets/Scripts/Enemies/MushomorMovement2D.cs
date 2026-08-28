@@ -50,6 +50,7 @@ namespace Castlevania2D.Enemies
         private bool isMoving;
         private bool dead;
         private bool hasPlacedOnGround;
+        private bool isPortalSummon;
         private static PhysicsMaterial2D zeroFrictionMaterial;
 
         public bool IsMoving => isMoving;
@@ -74,6 +75,22 @@ namespace Castlevania2D.Enemies
             body.linearVelocity = Vector2.zero;
             TryPlaceColliderBottomOnGround(spawnGroundProbeDistance);
             hasPlacedOnGround = true;
+        }
+
+        /// <summary>
+        /// Portal summons walk off cliffs: no vertical aggro freeze, Y locked, static walls ignored.
+        /// </summary>
+        public void MarkAsPortalSummon()
+        {
+            isPortalSummon = true;
+            if (body == null || bodyCollider == null)
+            {
+                return;
+            }
+
+            body.gravityScale = 0f;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
+            IgnoreStaticWorldColliders();
         }
 
         public void SetDead(bool value)
@@ -221,7 +238,7 @@ namespace Castlevania2D.Enemies
                 return;
             }
 
-            if (!EnemyAggroLimits.IsWithinVerticalRange(transform, target))
+            if (!isPortalSummon && !EnemyAggroLimits.IsWithinVerticalRange(transform, target))
             {
                 isMoving = false;
                 StopHorizontalMotion();
@@ -334,6 +351,43 @@ namespace Castlevania2D.Enemies
             }
 
             bodyCollider.sharedMaterial = zeroFrictionMaterial;
+        }
+
+        private void IgnoreStaticWorldColliders()
+        {
+            if (bodyCollider == null)
+            {
+                return;
+            }
+
+            Collider2D[] colliders = Object.FindObjectsByType<Collider2D>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D other = colliders[i];
+                if (other == null ||
+                    other == bodyCollider ||
+                    other.isTrigger ||
+                    other.transform == transform ||
+                    other.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                if (EnemyCollisionPassThrough2D.IsEnemyBody(other))
+                {
+                    continue;
+                }
+
+                Rigidbody2D otherBody = other.attachedRigidbody;
+                if (otherBody != null && otherBody.bodyType == RigidbodyType2D.Dynamic)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(bodyCollider, other, true);
+            }
         }
 
         private bool TryPlaceColliderBottomOnGround(float probeDistance)

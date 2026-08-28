@@ -214,19 +214,20 @@ namespace Castlevania2D.Enemies
             var entWalker = unit.GetComponent<EntWalkerEnemy2D>();
             if (entWalker != null)
             {
-                // Plants CapsuleCollider2D bottom on ground under the portal, then locks walk Y.
                 entWalker.PlaceOnGroundFromSpawn();
+                entWalker.MarkAsPortalSummon();
             }
 
             var mushomorMovement = unit.GetComponent<MushomorMovement2D>();
             if (mushomorMovement != null)
             {
-                // Plants the body collider bottom on the nearest static floor below the portal.
                 mushomorMovement.PlaceOnGroundFromSpawn();
+                mushomorMovement.MarkAsPortalSummon();
             }
 
             // Prefabs carry LootDropOnDeath; bootstrap covers summons that lack it.
             LootRuntimeBootstrap.EnsureLootDrop(unit);
+            EnemyCollisionPassThrough2D.EnsureOn(unit);
             liveList.Add(unit);
         }
 

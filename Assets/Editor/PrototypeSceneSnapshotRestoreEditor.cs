@@ -92,6 +92,7 @@ public static class PrototypeSceneSnapshotRestore
         // Walls must match post-swap layout (RightWall left / LeftWall right). Rebuild last
         // so layout snapshot never reintroduces LeftWall(1) or pre-swap positions.
         RestoreArenaWalls();
+        CameraStopWallSetupEditor.EnsureInScene(scene);
         ClearRightSideObstacles();
         RestoreSnakePlacement();
         DisableHostileEnemiesInScene();
@@ -162,6 +163,18 @@ public static class PrototypeSceneSnapshotRestore
         so.FindProperty("smoothTime").floatValue = 0.1f;
         so.FindProperty("lockWorldY").boolValue = false;
         so.FindProperty("clampToSceneWalls").boolValue = false;
+        SerializedProperty wallsProperty = so.FindProperty("cameraStopWalls");
+        if (wallsProperty != null && wallsProperty.isArray)
+        {
+            GameObject leftWallObject = GameObject.Find("CameraStopWall");
+            GameObject rightWallObject = GameObject.Find("CameraStopWall_Right");
+            wallsProperty.arraySize = 2;
+            wallsProperty.GetArrayElementAtIndex(0).objectReferenceValue =
+                leftWallObject != null ? leftWallObject.GetComponent<Collider2D>() : null;
+            wallsProperty.GetArrayElementAtIndex(1).objectReferenceValue =
+                rightWallObject != null ? rightWallObject.GetComponent<Collider2D>() : null;
+        }
+
         so.ApplyModifiedPropertiesWithoutUndo();
         follow.enabled = true;
 
@@ -528,6 +541,8 @@ public static class PrototypeSceneSnapshotRestore
 
         // Keep karsiori sky/mountains/clouds under one Background root / sorting layer.
         MergeBackgroundLayersEditor.MergeBackgroundInScene(SceneManager.GetActiveScene());
+        SceneBackgroundParallaxSetupEditor.EnsureInScene(SceneManager.GetActiveScene());
+        ForestLinesSetupEditor.EnsureInScene(SceneManager.GetActiveScene());
     }
 
     private static void EnsureSpritePlacement(SpritePlacement placement, bool recreateIfExists = false)

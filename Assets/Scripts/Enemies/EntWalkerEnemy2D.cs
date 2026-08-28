@@ -129,6 +129,7 @@ namespace Castlevania2D.Enemies
         private float lockedWalkWorldY;
         private bool hasLockedWalkWorldY;
         private bool capsuleGroundPlanted;
+        private bool ignoreLedgeStop;
         private float sceneAuthoredFeetWorldY;
         private bool hasSceneAuthoredFeetWorldY;
         private float wallRecoveryTimerRemaining;
@@ -212,6 +213,12 @@ namespace Castlevania2D.Enemies
             body.linearVelocity = Vector2.zero;
             body.gravityScale = 0f;
             PlantCapsuleOnGroundAndLock();
+        }
+
+        /// <summary>Portal summons walk off cliffs instead of stopping at the ledge.</summary>
+        public void MarkAsPortalSummon()
+        {
+            ignoreLedgeStop = true;
         }
 
         /// <summary>Obsolete alias kept for portal call sites / older compiles.</summary>
@@ -327,7 +334,7 @@ namespace Castlevania2D.Enemies
             float maxAttackY = EnemyAggroLimits.CapVerticalRange(attackVerticalRange);
             float direction = Mathf.Sign(deltaX);
             bool inChase = distanceX <= chaseRange &&
-                           distanceY <= maxChaseY &&
+                           (ignoreLedgeStop || distanceY <= maxChaseY) &&
                            distanceX > stopDistance;
             bool inAttack = HasAttackFrames() &&
                             distanceX <= attackRange &&
@@ -1163,6 +1170,11 @@ namespace Castlevania2D.Enemies
                 return false;
             }
 
+            if (ignoreLedgeStop)
+            {
+                return true;
+            }
+
             // Ledge stop only — never snap Y / never hover. Y stays scene-locked.
             float groundProbe = Mathf.Max(groundProbeDistanceWorld, walkHeightLockProbeDistanceWorld, 0.55f);
             return TryProbeGroundAhead(moveDirection, groundProbe, out _);
@@ -1365,8 +1377,10 @@ namespace Castlevania2D.Enemies
         {
             if (hit.collider == null
                 || hit.collider.isTrigger
+                || hit.distance <= 0.0001f
                 || IsOwnCollider(hit.collider)
-                || EnemyCollisionPassThrough2D.IsEnemyBody(hit.collider))
+                || EnemyCollisionPassThrough2D.IsEnemyBody(hit.collider)
+                || EnemyCollisionPassThrough2D.IsCameraStopWall(hit.collider))
             {
                 return false;
             }

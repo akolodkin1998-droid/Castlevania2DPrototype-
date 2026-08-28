@@ -31,21 +31,41 @@ namespace Castlevania2D.Enemies
                 FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
-                EnemyHealth health = all[i];
-                if (health == null || IsPlayerRoot(health.transform.root))
-                {
-                    continue;
-                }
+                EnsureOn(all[i] != null ? all[i].gameObject : null);
+            }
+        }
 
-                if (health.GetComponent<EnemyCollisionPassThrough2D>() == null)
-                {
-                    health.gameObject.AddComponent<EnemyCollisionPassThrough2D>();
-                }
+        /// <summary>
+        /// Scene enemies get this on load. Portal summons are instantiated later
+        /// and must call this so they also pass through other enemy bodies.
+        /// </summary>
+        public static void EnsureOn(GameObject enemyRoot)
+        {
+            if (enemyRoot == null || IsPlayerRoot(enemyRoot.transform.root))
+            {
+                return;
+            }
 
-                if (health.GetComponent<EnemySpriteOverlapSort2D>() == null)
-                {
-                    health.gameObject.AddComponent<EnemySpriteOverlapSort2D>();
-                }
+            EnemyHealth health = enemyRoot.GetComponent<EnemyHealth>();
+            if (health == null)
+            {
+                health = enemyRoot.GetComponentInChildren<EnemyHealth>(true);
+            }
+
+            if (health == null)
+            {
+                return;
+            }
+
+            GameObject host = health.gameObject;
+            if (host.GetComponent<EnemyCollisionPassThrough2D>() == null)
+            {
+                host.AddComponent<EnemyCollisionPassThrough2D>();
+            }
+
+            if (host.GetComponent<EnemySpriteOverlapSort2D>() == null)
+            {
+                host.AddComponent<EnemySpriteOverlapSort2D>();
             }
         }
 
@@ -121,6 +141,27 @@ namespace Castlevania2D.Enemies
             return collider != null && collider.enabled && !collider.isTrigger;
         }
 
+        public static bool IsCameraStopWall(Collider2D collider)
+        {
+            if (collider == null)
+            {
+                return false;
+            }
+
+            Transform current = collider.transform;
+            while (current != null)
+            {
+                if (current.name.StartsWith("CameraStopWall", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+
+                current = current.parent;
+            }
+
+            return false;
+        }
+
         private static void Register(Collider2D body)
         {
             if (body == null)
@@ -145,7 +186,29 @@ namespace Castlevania2D.Enemies
                 Physics2D.IgnoreCollision(body, other, true);
             }
 
+            IgnoreCameraStopWalls(body);
             Bodies.Add(body);
+        }
+
+        private static void IgnoreCameraStopWalls(Collider2D body)
+        {
+            IgnoreNamedWall(body, "CameraStopWall");
+            IgnoreNamedWall(body, "CameraStopWall_Right");
+        }
+
+        private static void IgnoreNamedWall(Collider2D body, string wallName)
+        {
+            GameObject wall = GameObject.Find(wallName);
+            if (wall == null)
+            {
+                return;
+            }
+
+            Collider2D wallCollider = wall.GetComponent<Collider2D>();
+            if (wallCollider != null && wallCollider != body)
+            {
+                Physics2D.IgnoreCollision(body, wallCollider, true);
+            }
         }
 
         private static void Unregister(Collider2D body)

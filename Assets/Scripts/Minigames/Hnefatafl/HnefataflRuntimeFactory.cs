@@ -82,7 +82,11 @@ namespace Castlevania2D.Minigames.Hnefatafl
             status.alignment = TextAnchor.MiddleCenter;
             status.color = new Color(0.92f, 0.84f, 0.68f, 1f);
 
-            GameObject restartGroup = CreateRestartSlot(root.transform, slotSprite, out Button restart);
+            GameObject endMatchGroup = CreateEndMatchGroup(
+                root.transform,
+                slotSprite,
+                out Button restart,
+                out Button leave);
 
             EnsureCamera();
 
@@ -94,7 +98,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
             HnefataflBoardView view = root.GetComponent<HnefataflBoardView>();
             HnefataflGameController controller = root.GetComponent<HnefataflGameController>();
             view.Wire(boardRect, boardImage, piecesRoot);
-            controller.Wire(view, status, restart, restartGroup);
+            controller.Wire(view, status, restart, leave, endMatchGroup);
             view.Configure(
                 boardSprite,
                 attackerA,
@@ -107,21 +111,44 @@ namespace Castlevania2D.Minigames.Hnefatafl
             return controller;
         }
 
-        private static GameObject CreateRestartSlot(
+        private static GameObject CreateEndMatchGroup(
             Transform parent,
             Sprite slotSprite,
-            out Button button)
+            out Button restart,
+            out Button leave)
         {
-            var group = new GameObject("RestartGroup", typeof(RectTransform));
+            var group = new GameObject("EndMatchGroup", typeof(RectTransform));
             group.transform.SetParent(parent, false);
             RectTransform groupRect = group.GetComponent<RectTransform>();
             groupRect.anchorMin = new Vector2(0.5f, 0f);
             groupRect.anchorMax = new Vector2(0.5f, 0f);
             groupRect.pivot = new Vector2(0.5f, 0f);
-            groupRect.sizeDelta = new Vector2(380f, 96f);
-            groupRect.anchoredPosition = new Vector2(0f, 28f);
+            groupRect.sizeDelta = new Vector2(420f, 220f);
+            groupRect.anchoredPosition = new Vector2(0f, 24f);
 
-            Image visual = CreateImage("RestartVisual", group.transform);
+            leave = CreateMatchSlot(group.transform, slotSprite, "В ЛАВКУ", new Vector2(0f, 108f));
+            restart = CreateMatchSlot(group.transform, slotSprite, "ЗАНОВО", new Vector2(0f, 0f));
+
+            group.SetActive(false);
+            return group;
+        }
+
+        private static Button CreateMatchSlot(
+            Transform parent,
+            Sprite slotSprite,
+            string label,
+            Vector2 anchoredPosition)
+        {
+            var slot = new GameObject(label, typeof(RectTransform));
+            slot.transform.SetParent(parent, false);
+            RectTransform slotRect = slot.GetComponent<RectTransform>();
+            slotRect.anchorMin = new Vector2(0.5f, 0f);
+            slotRect.anchorMax = new Vector2(0.5f, 0f);
+            slotRect.pivot = new Vector2(0.5f, 0f);
+            slotRect.sizeDelta = new Vector2(380f, 96f);
+            slotRect.anchoredPosition = anchoredPosition;
+
+            Image visual = CreateImage("Visual", slot.transform);
             Stretch(visual.rectTransform);
             visual.preserveAspect = true;
             visual.raycastTarget = false;
@@ -136,37 +163,34 @@ namespace Castlevania2D.Minigames.Hnefatafl
             }
 
             var hotspot = new GameObject(
-                "RestartButton",
+                "Button",
                 typeof(RectTransform),
                 typeof(CanvasRenderer),
                 typeof(Image),
                 typeof(Button),
                 typeof(MenuButtonSlideFeedback));
-            hotspot.transform.SetParent(group.transform, false);
+            hotspot.transform.SetParent(slot.transform, false);
             Stretch(hotspot.GetComponent<RectTransform>());
             Image hotspotImage = hotspot.GetComponent<Image>();
             hotspotImage.color = new Color(1f, 1f, 1f, 0f);
             hotspotImage.raycastTarget = true;
-            button = hotspot.GetComponent<Button>();
+            Button button = hotspot.GetComponent<Button>();
             ColorBlock colors = button.colors;
             colors.highlightedColor = Color.white;
             colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
             button.colors = colors;
 
-            MenuButtonSlideFeedback feedback = hotspot.GetComponent<MenuButtonSlideFeedback>();
-            feedback.AssignVisual(visual.rectTransform);
+            hotspot.GetComponent<MenuButtonSlideFeedback>().AssignVisual(visual.rectTransform);
 
-            Text label = CreateText("Label", visual.transform);
-            Stretch(label.rectTransform);
-            label.text = "ЗАНОВО";
-            label.fontSize = 28;
-            label.fontStyle = FontStyle.Bold;
-            label.alignment = TextAnchor.MiddleCenter;
-            label.color = new Color(0.96f, 0.88f, 0.7f, 1f);
-            label.raycastTarget = false;
-
-            group.SetActive(false);
-            return group;
+            Text text = CreateText("Label", visual.transform);
+            Stretch(text.rectTransform);
+            text.text = label;
+            text.fontSize = 28;
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = new Color(0.96f, 0.88f, 0.7f, 1f);
+            text.raycastTarget = false;
+            return button;
         }
 
         private static void EnsureCamera()

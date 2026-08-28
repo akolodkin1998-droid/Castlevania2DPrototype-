@@ -64,17 +64,11 @@ namespace Castlevania2D.Enemies
 
             if (useWorldXActivationGate)
             {
-                if (target.position.x >= activationMinTargetWorldX &&
-                    EnemyAggroLimits.IsWithinVerticalRange(transform, target))
+                if (target.position.x >= activationMinTargetWorldX)
                 {
                     SightTarget();
                 }
 
-                return;
-            }
-
-            if (!EnemyAggroLimits.IsWithinVerticalRange(transform, target))
-            {
                 return;
             }
 

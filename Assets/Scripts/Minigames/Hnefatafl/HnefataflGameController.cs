@@ -1,4 +1,5 @@
 using System.Collections;
+using Castlevania2D.Hub;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,7 +13,8 @@ namespace Castlevania2D.Minigames.Hnefatafl
         [SerializeField] private HnefataflBoardView boardView;
         [SerializeField] private Text statusText;
         [SerializeField] private Button restartButton;
-        [SerializeField] private GameObject restartGroup;
+        [SerializeField] private Button leaveButton;
+        [SerializeField] private GameObject endMatchGroup;
         [SerializeField] private float aiThinkDelay = 0.25f;
         [SerializeField] private float aiMoveDuration = 0.45f;
         [SerializeField] private int aiDepth = 3;
@@ -30,7 +32,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 restartButton.onClick.AddListener(StartNewGame);
             }
 
-            SetRestartVisible(false);
+            if (leaveButton != null)
+            {
+                leaveButton.onClick.AddListener(ReturnToShop);
+            }
+
+            SetEndMatchVisible(false);
         }
 
         private void Start()
@@ -43,6 +50,11 @@ namespace Castlevania2D.Minigames.Hnefatafl
             if (restartButton != null)
             {
                 restartButton.onClick.RemoveListener(StartNewGame);
+            }
+
+            if (leaveButton != null)
+            {
+                leaveButton.onClick.RemoveListener(ReturnToShop);
             }
         }
 
@@ -66,7 +78,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 boardView.SetInputEnabled(true);
             }
 
-            SetRestartVisible(false);
+            SetEndMatchVisible(false);
 
             SetStatus(BuildTurnStatus());
         }
@@ -147,7 +159,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 ? $"Победа! Вы играли за {sideName}."
                 : $"Поражение. Вы играли за {sideName}.");
 
-            SetRestartVisible(true);
+            SetEndMatchVisible(true);
         }
 
         private string BuildTurnStatus()
@@ -164,11 +176,17 @@ namespace Castlevania2D.Minigames.Hnefatafl
             }
         }
 
-        private void SetRestartVisible(bool visible)
+        private void ReturnToShop()
         {
-            if (restartGroup != null)
+            HubTaflSession.MarkReturnToShop();
+            HubSceneFadeLoad.Load(HubTaflSession.HubSceneName);
+        }
+
+        private void SetEndMatchVisible(bool visible)
+        {
+            if (endMatchGroup != null)
             {
-                restartGroup.SetActive(visible);
+                endMatchGroup.SetActive(visible);
                 return;
             }
 
@@ -176,25 +194,38 @@ namespace Castlevania2D.Minigames.Hnefatafl
             {
                 restartButton.gameObject.SetActive(visible);
             }
+
+            if (leaveButton != null)
+            {
+                leaveButton.gameObject.SetActive(visible);
+            }
         }
 
         public void Wire(
             HnefataflBoardView view,
             Text status,
             Button restart,
-            GameObject restartRoot)
+            Button leave,
+            GameObject endMatchRoot)
         {
             boardView = view;
             statusText = status;
             restartButton = restart;
-            restartGroup = restartRoot;
+            leaveButton = leave;
+            endMatchGroup = endMatchRoot;
             if (restartButton != null)
             {
                 restartButton.onClick.RemoveListener(StartNewGame);
                 restartButton.onClick.AddListener(StartNewGame);
             }
 
-            SetRestartVisible(false);
+            if (leaveButton != null)
+            {
+                leaveButton.onClick.RemoveListener(ReturnToShop);
+                leaveButton.onClick.AddListener(ReturnToShop);
+            }
+
+            SetEndMatchVisible(false);
         }
     }
 }

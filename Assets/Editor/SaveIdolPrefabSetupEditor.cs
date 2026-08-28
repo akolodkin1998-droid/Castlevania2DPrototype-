@@ -13,7 +13,7 @@ public static class SaveIdolPrefabSetupEditor
     private const string PlayerObjectName = "Player_HeroKnight";
     private const string IdolObjectName = "SaveIdol";
     private const int FrameCount = 10;
-    private const int SortingOrder = 2;
+    private const int SortingOrder = -1;
 
     [MenuItem("Tools/Castlevania 2D/Setup Save Idol Prefab")]
     public static void SetupFromMenu()

@@ -19,11 +19,13 @@ namespace Castlevania2D.Combat
         [SerializeField] private Vector3 dustScale = new Vector3(1.71875f, 1.71875f, 1f);
         [SerializeField] private int dustSortingOrder = 8;
         [SerializeField] [Min(0f)] private float jumpForceMultiplier = 1.5f;
+        [SerializeField] [Min(0f)] private float useCooldown = 2f;
 
         private PlayerLootInventory inventory;
         private IForcedJump forcedJump;
         private Sprite[] dustFrames;
         private bool dustLoadAttempted;
+        private float nextUseTime;
 
         private void Awake()
         {
@@ -33,6 +35,11 @@ namespace Castlevania2D.Combat
 
         public bool TryActivate()
         {
+            if (Time.time < nextUseTime)
+            {
+                return false;
+            }
+
             if (inventory == null)
             {
                 inventory = GetComponent<PlayerLootInventory>();
@@ -43,6 +50,7 @@ namespace Castlevania2D.Combat
                 return false;
             }
 
+            nextUseTime = Time.time + useCooldown;
             SpawnDust();
             if (forcedJump == null)
             {
