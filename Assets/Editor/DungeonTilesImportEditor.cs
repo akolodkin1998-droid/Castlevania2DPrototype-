@@ -8,11 +8,60 @@ using UnityEngine.Tilemaps;
 
 /// <summary>
 /// Imports the dungeon and loading sheets into separate sprite PNG and Tile asset folders.
+/// Underground-only: Tools → Castlevania 2D → Import Underground Tiles
+/// or Temp/import_underground_tiles.flag. Never edits scenes.
 /// </summary>
+[InitializeOnLoad]
 public static class DungeonTilesImportEditor
 {
     private const string MenuPath = "Tools/Castlevania 2D/Import Dungeon Tiles";
     private const string TextureFolder = "Assets/Art/Tiles/Dungeon";
+    private const string UndergroundFlagPath = "Temp/import_underground_tiles.flag";
+    private const string UndergroundResultPath = "Temp/import_underground_tiles_result.txt";
+
+    static DungeonTilesImportEditor()
+    {
+        EditorApplication.delayCall += TryImportUndergroundFromFlag;
+        EditorApplication.update += PollUndergroundFlag;
+    }
+
+    private static void PollUndergroundFlag()
+    {
+        if (!File.Exists(UndergroundFlagPath) ||
+            EditorApplication.isCompiling ||
+            EditorApplication.isUpdating ||
+            EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryImportUndergroundFromFlag();
+    }
+
+    private static void TryImportUndergroundFromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(UndergroundFlagPath))
+        {
+            return;
+        }
+
+        File.Delete(UndergroundFlagPath);
+        try
+        {
+            int created = ImportUnderground();
+            string summary = "Imported underground tiles only. Tile assets: " + created +
+                             ". Scene was not modified.";
+            Debug.Log(summary);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText(UndergroundResultPath, "OK\n" + summary);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText(UndergroundResultPath, "FAIL\n" + exception);
+        }
+    }
 
     private static readonly SheetDefinition[] Sheets =
     {
@@ -32,13 +81,17 @@ public static class DungeonTilesImportEditor
             cellSize: 32,
             alwaysExportTiles: true),
         new(
-            sourcePath: @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Подъземье.png",
+            sourcePath: @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Бэкграунд ФОН\Подъземье\тайлы.png",
             textureAssetPath: TextureFolder + "/Underground_Tiles.png",
             outputFolderName: "Underground",
             sheetWidth: 256,
             sheetHeight: 256,
             cellSize: 32,
-            alwaysExportTiles: true)
+            alwaysExportTiles: true,
+            fallbackSourcePaths: new[]
+            {
+                @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Подъземье.png"
+            })
     };
 
     // Intentionally menu-only: automatic imports can invalidate Tile Palette targets mid-drag.
@@ -55,6 +108,19 @@ public static class DungeonTilesImportEditor
         Import();
     }
 
+    [MenuItem("Tools/Castlevania 2D/Import Underground Tiles")]
+    public static void ImportUndergroundMenu()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            EditorApplication.isPlaying = false;
+            EditorApplication.delayCall += () => ImportUnderground();
+            return;
+        }
+
+        ImportUnderground();
+    }
+
     public static void Import()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -62,10 +128,7 @@ public static class DungeonTilesImportEditor
             return;
         }
 
-        EnsureFolder("Assets/Art", "Tiles");
-        EnsureFolder("Assets/Art/Tiles", "Dungeon");
-        EnsureFolder(TextureFolder, "Sliced");
-        EnsureFolder(TextureFolder, "Tiles");
+        EnsureFolders();
 
         foreach (SheetDefinition sheet in Sheets)
         {
@@ -78,7 +141,42 @@ public static class DungeonTilesImportEditor
         EditorGUIUtility.PingObject(Selection.activeObject);
     }
 
-    private static void ImportSheet(SheetDefinition sheet)
+    public static int ImportUnderground()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return 0;
+        }
+
+        EnsureFolders();
+        SheetDefinition underground = GetSheet("Underground");
+        int created = ImportSheet(underground);
+        AssetDatabase.SaveAssets();
+        return created;
+    }
+
+    private static void EnsureFolders()
+    {
+        EnsureFolder("Assets/Art", "Tiles");
+        EnsureFolder("Assets/Art/Tiles", "Dungeon");
+        EnsureFolder(TextureFolder, "Sliced");
+        EnsureFolder(TextureFolder, "Tiles");
+    }
+
+    private static SheetDefinition GetSheet(string outputFolderName)
+    {
+        for (int i = 0; i < Sheets.Length; i++)
+        {
+            if (Sheets[i].OutputFolderName == outputFolderName)
+            {
+                return Sheets[i];
+            }
+        }
+
+        throw new InvalidOperationException("No tile sheet named " + outputFolderName + ".");
+    }
+
+    private static int ImportSheet(SheetDefinition sheet)
     {
         EnsureFolder(TextureFolder + "/Sliced", sheet.OutputFolderName);
         EnsureFolder(TextureFolder + "/Tiles", sheet.OutputFolderName);
@@ -115,6 +213,7 @@ public static class DungeonTilesImportEditor
             $"{sheet.OutputFolderName} tiles ready: {sprites.Length} sliced sprites / {created} Tile assets, " +
             $"cell {sheet.CellSize}x{sheet.CellSize}, grid {sheet.Columns}x{sheet.Rows}. " +
             $"Texture: {sheet.TextureAssetPath}. PNG tiles: {sheet.SlicedPngFolder}. Tiles: {sheet.TilesFolder}.");
+        return created;
     }
 
     private static void CopySourceTexture(SheetDefinition sheet)
@@ -122,9 +221,10 @@ public static class DungeonTilesImportEditor
         string absoluteDestination = Path.GetFullPath(sheet.TextureAssetPath);
         Directory.CreateDirectory(Path.GetDirectoryName(absoluteDestination)!);
 
-        if (File.Exists(sheet.SourcePath))
+        string sourcePath = ResolveSourcePath(sheet);
+        if (File.Exists(sourcePath))
         {
-            File.Copy(sheet.SourcePath, absoluteDestination, overwrite: true);
+            File.Copy(sourcePath, absoluteDestination, overwrite: true);
         }
         else if (!File.Exists(absoluteDestination))
         {
@@ -399,7 +499,8 @@ public static class DungeonTilesImportEditor
             int sheetWidth,
             int sheetHeight,
             int cellSize,
-            bool alwaysExportTiles = false)
+            bool alwaysExportTiles = false,
+            string[] fallbackSourcePaths = null)
         {
             if (sheetWidth % cellSize != 0 || sheetHeight % cellSize != 0)
             {
@@ -413,9 +514,11 @@ public static class DungeonTilesImportEditor
             SheetHeight = sheetHeight;
             CellSize = cellSize;
             AlwaysExportTiles = alwaysExportTiles;
+            FallbackSourcePaths = fallbackSourcePaths ?? Array.Empty<string>();
         }
 
         public string SourcePath { get; }
+        public string[] FallbackSourcePaths { get; }
         public string TextureAssetPath { get; }
         public string OutputFolderName { get; }
         public int SheetWidth { get; }
@@ -433,6 +536,25 @@ public static class DungeonTilesImportEditor
         {
             return $"{SpriteNamePrefix}{index:D2}";
         }
+    }
+
+    private static string ResolveSourcePath(SheetDefinition sheet)
+    {
+        if (File.Exists(sheet.SourcePath))
+        {
+            return sheet.SourcePath;
+        }
+
+        for (int i = 0; i < sheet.FallbackSourcePaths.Length; i++)
+        {
+            string fallback = sheet.FallbackSourcePaths[i];
+            if (File.Exists(fallback))
+            {
+                return fallback;
+            }
+        }
+
+        return sheet.SourcePath;
     }
 
     private static void EnsureFolder(string parent, string child)
