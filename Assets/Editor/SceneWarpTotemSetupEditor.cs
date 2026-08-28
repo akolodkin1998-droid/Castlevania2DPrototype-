@@ -209,7 +209,7 @@ public static class SceneWarpTotemSetupEditor
         SerializedProperty promptPos = warpSo.FindProperty("promptLocalPosition");
         if (promptPos != null)
         {
-            promptPos.vector3Value = new Vector3(0f, 5f, 0f);
+            promptPos.vector3Value = new Vector3(0f, 4.6f, 0f);
         }
 
         warpSo.ApplyModifiedPropertiesWithoutUndo();
