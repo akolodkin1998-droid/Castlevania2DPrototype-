@@ -15,7 +15,7 @@ namespace Castlevania2D.Environment
         [SerializeField] private string destinationSceneName;
         [SerializeField] private string arrivalTotemName;
         [SerializeField] [Min(0.1f)] private float interactionDistance = 2.4f;
-        [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 3.2f, 0f);
+        [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 5f, 0f);
         [SerializeField] private Vector3 promptScale = new Vector3(0.48f, 0.48f, 1f);
         [SerializeField] [Min(0.01f)] private float promptPopDuration = 0.22f;
         [SerializeField] [Min(0f)] private float promptPopOffset = 0.2f;

@@ -2260,7 +2260,7 @@ MonoBehaviour:
   destinationSceneName: Prototype
   arrivalTotemName: PrototypeWarpTotem
   interactionDistance: 2.4
-  promptLocalPosition: {x: 0, y: 3.2, z: 0}
+  promptLocalPosition: {x: 0, y: 5, z: 0}
   promptScale: {x: 0.48, y: 0.48, z: 1}
   promptPopDuration: 0.22
   promptPopOffset: 0.2

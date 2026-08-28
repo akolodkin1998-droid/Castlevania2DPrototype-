@@ -206,6 +206,12 @@ public static class SceneWarpTotemSetupEditor
             promptProp.objectReferenceValue = prompt;
         }
 
+        SerializedProperty promptPos = warpSo.FindProperty("promptLocalPosition");
+        if (promptPos != null)
+        {
+            promptPos.vector3Value = new Vector3(0f, 5f, 0f);
+        }
+
         warpSo.ApplyModifiedPropertiesWithoutUndo();
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
