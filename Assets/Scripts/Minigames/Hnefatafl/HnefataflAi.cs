@@ -451,6 +451,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 return false;
             }
 
+            int steps = Math.Abs(toRow - king.Row) + Math.Abs(toCol - king.Col);
+            if (steps == 0 || steps > HnefataflBoardState.KingMaxSteps)
+            {
+                return false;
+            }
+
             int dRow = Math.Sign(toRow - king.Row);
             int dCol = Math.Sign(toCol - king.Col);
             int row = king.Row + dRow;

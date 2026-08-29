@@ -891,6 +891,11 @@ public static class VillageHubSetupEditor
         idleSo.ApplyModifiedPropertiesWithoutUndo();
         idle.EditorAssign(frames, NpcIdleFrameRate);
 
+        if (npc.GetComponent<NpcTalk2D>() == null)
+        {
+            npc.AddComponent<NpcTalk2D>();
+        }
+
         HubMerchantTalk2D talk = npc.GetComponent<HubMerchantTalk2D>();
         if (talk == null)
         {

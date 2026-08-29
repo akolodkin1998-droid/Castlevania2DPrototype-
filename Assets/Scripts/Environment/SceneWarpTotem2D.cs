@@ -1,6 +1,7 @@
 using Castlevania2D.Hub;
 using Castlevania2D.Player;
 using Castlevania2D.Save;
+using Castlevania2D.UI;
 using UnityEngine;
 
 namespace Castlevania2D.Environment
@@ -81,6 +82,8 @@ namespace Castlevania2D.Environment
             bool canInteract = isNear
                                && !IsBusy
                                && !HubMerchantTalk2D.BlocksHubInteract
+                               && !NpcTalk2D.IsTalking
+                               && !DialogueBoxUI.IsOpen
                                && (session == null || session.CanInteract)
                                && !string.IsNullOrEmpty(destinationSceneName);
 

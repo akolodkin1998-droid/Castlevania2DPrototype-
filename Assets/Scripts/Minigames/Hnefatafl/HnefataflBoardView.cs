@@ -13,15 +13,15 @@ namespace Castlevania2D.Minigames.Hnefatafl
     {
         private const float TextureWidth = 512f;
         private const float TextureHeight = 512f;
-        private const float GridLeft = 79f;
-        private const float GridTop = 79f;
-        private const float GridRight = 431f;
-        private const float GridBottom = 431f;
+        private const float GridLeft = 71f;
+        private const float GridTop = 71f;
+        private const float GridRight = 438f;
+        private const float GridBottom = 440f;
 
         [SerializeField] private RectTransform boardRect;
         [SerializeField] private Image boardImage;
         [SerializeField] private RectTransform piecesRoot;
-        [SerializeField] private float pieceScale = 0.9f;
+        [SerializeField] private float pieceScale = 0.81f;
 
         private readonly Dictionary<HnefataflCoord, HnefataflPieceView> pieces =
             new Dictionary<HnefataflCoord, HnefataflPieceView>(32);

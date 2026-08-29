@@ -15,6 +15,14 @@ namespace Castlevania2D.Input
 
         private void Update()
         {
+            if (GameplayInputLock.IsLocked)
+            {
+                Move = Vector2.zero;
+                JumpPressed = false;
+                AttackPressed = false;
+                return;
+            }
+
             Move = new Vector2(UnityEngine.Input.GetAxisRaw(horizontalAxis), 0f);
             JumpPressed = UnityEngine.Input.GetButtonDown(jumpButton);
             AttackPressed = UnityEngine.Input.GetButtonDown(attackButton);

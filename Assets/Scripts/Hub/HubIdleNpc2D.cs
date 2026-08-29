@@ -19,9 +19,9 @@ namespace Castlevania2D.Hub
             spriteRenderer = GetComponent<SpriteRenderer>();
             StripPhysics();
             ApplyFrame();
-            if (GetComponent<HubMerchantTalk2D>() == null)
+            if (GetComponent<NpcTalk2D>() == null)
             {
-                gameObject.AddComponent<HubMerchantTalk2D>();
+                gameObject.AddComponent<NpcTalk2D>();
             }
         }
 

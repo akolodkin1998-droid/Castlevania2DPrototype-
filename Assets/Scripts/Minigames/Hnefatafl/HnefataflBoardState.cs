@@ -4,13 +4,14 @@ using System.Collections.Generic;
 namespace Castlevania2D.Minigames.Hnefatafl
 {
     /// <summary>
-    /// 9x9 Tablut-style board. King escapes only via corner squares.
+    /// 9x9 Tablut / Kiev-Rus tavlei: attackers move first, king escapes via corners.
     /// </summary>
     public sealed class HnefataflBoardState
     {
         public const int Size = 9;
         public const int ThroneRow = 4;
         public const int ThroneCol = 4;
+        public const int KingMaxSteps = 3;
 
         private readonly HnefataflPieceKind[] cells = new HnefataflPieceKind[Size * Size];
 
@@ -37,11 +38,11 @@ namespace Castlevania2D.Minigames.Hnefatafl
         public static bool IsRestricted(int row, int col) =>
             IsThrone(row, col) || IsCorner(row, col);
 
-        public void SetupNewGame(HnefataflSide firstSide)
+        public void SetupNewGame()
         {
             Array.Clear(cells, 0, cells.Length);
             Result = HnefataflGameResult.None;
-            SideToMove = firstSide;
+            SideToMove = HnefataflSide.Attackers;
 
             this[ThroneRow, ThroneCol] = HnefataflPieceKind.King;
 
@@ -170,6 +171,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 return false;
             }
 
+            int steps = Math.Abs(move.To.Row - move.From.Row) + Math.Abs(move.To.Col - move.From.Col);
+            if (isKing && steps > KingMaxSteps)
+            {
+                return false;
+            }
+
             return IsPathClear(move.From, move.To);
         }
 
@@ -251,7 +258,8 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
             bool nextToThrone =
                 Math.Abs(king.Row - ThroneRow) + Math.Abs(king.Col - ThroneCol) == 1;
-            return nextToThrone ? 3 : 2;
+            // Three attacker cells plus the throne anvil.
+            return nextToThrone ? 4 : 2;
         }
 
         public static HnefataflSide Opposite(HnefataflSide side) =>
@@ -285,9 +293,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
         private void TryRay(HnefataflCoord from, int dRow, int dCol, List<HnefataflMove> buffer)
         {
+            HnefataflPieceKind piece = this[from.Row, from.Col];
+            int maxSteps = piece == HnefataflPieceKind.King ? KingMaxSteps : Size;
+            int steps = 0;
             int row = from.Row + dRow;
             int col = from.Col + dCol;
-            while (IsInside(row, col))
+            while (IsInside(row, col) && steps < maxSteps)
             {
                 if (this[row, col] != HnefataflPieceKind.None)
                 {
@@ -303,6 +314,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
                 row += dRow;
                 col += dCol;
+                steps++;
             }
         }
 
@@ -400,25 +412,20 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
         private bool IsKingCaptured(HnefataflCoord king)
         {
-            int blocked = 0;
-            if (IsHostileToKing(king.Row - 1, king.Col)) blocked++;
-            if (IsHostileToKing(king.Row + 1, king.Col)) blocked++;
-            if (IsHostileToKing(king.Row, king.Col - 1)) blocked++;
-            if (IsHostileToKing(king.Row, king.Col + 1)) blocked++;
-
             if (IsThrone(king.Row, king.Col))
             {
-                return blocked >= 4;
+                return CountKingHostiles(king) >= 4;
             }
 
             bool nextToThrone =
                 Math.Abs(king.Row - ThroneRow) + Math.Abs(king.Col - ThroneCol) == 1;
             if (nextToThrone)
             {
-                return blocked >= 3;
+                return CountKingHostiles(king) >= 4;
             }
 
-            return blocked >= 2;
+            return IsHostileToKing(king.Row - 1, king.Col) && IsHostileToKing(king.Row + 1, king.Col)
+                || IsHostileToKing(king.Row, king.Col - 1) && IsHostileToKing(king.Row, king.Col + 1);
         }
 
         private bool IsHostileToKing(int row, int col)

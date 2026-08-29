@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace Castlevania2D.Minigames.Hnefatafl
 {
     /// <summary>
-    /// Runs one Hnefatafl match: random side for player, player moves first, medium AI replies.
+    /// Runs one Hnefatafl match: random side for the player, attackers always move first.
     /// </summary>
     public sealed class HnefataflGameController : MonoBehaviour
     {
@@ -36,8 +36,6 @@ namespace Castlevania2D.Minigames.Hnefatafl
             {
                 leaveButton.onClick.AddListener(ReturnToShop);
             }
-
-            SetEndMatchVisible(false);
         }
 
         private void Start()
@@ -68,19 +66,22 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 : HnefataflSide.Defenders;
 
             board = new HnefataflBoardState();
-            // Player always moves first, regardless of side.
-            board.SetupNewGame(playerSide);
+            board.SetupNewGame();
             Canvas.ForceUpdateCanvases();
 
+            bool playerOpens = playerSide == HnefataflSide.Attackers;
             if (boardView != null)
             {
                 boardView.BindBoard(board, playerSide);
-                boardView.SetInputEnabled(true);
+                boardView.SetInputEnabled(playerOpens);
             }
 
-            SetEndMatchVisible(false);
-
             SetStatus(BuildTurnStatus());
+
+            if (!playerOpens)
+            {
+                StartCoroutine(AiTurnRoutine());
+            }
         }
 
         public void HandlePlayerMove(HnefataflMove move)
@@ -158,8 +159,6 @@ namespace Castlevania2D.Minigames.Hnefatafl
             SetStatus(playerWon
                 ? $"Победа! Вы играли за {sideName}."
                 : $"Поражение. Вы играли за {sideName}.");
-
-            SetEndMatchVisible(true);
         }
 
         private string BuildTurnStatus()
@@ -180,25 +179,6 @@ namespace Castlevania2D.Minigames.Hnefatafl
         {
             HubTaflSession.MarkReturnToShop();
             HubSceneFadeLoad.Load(HubTaflSession.HubSceneName);
-        }
-
-        private void SetEndMatchVisible(bool visible)
-        {
-            if (endMatchGroup != null)
-            {
-                endMatchGroup.SetActive(visible);
-                return;
-            }
-
-            if (restartButton != null)
-            {
-                restartButton.gameObject.SetActive(visible);
-            }
-
-            if (leaveButton != null)
-            {
-                leaveButton.gameObject.SetActive(visible);
-            }
         }
 
         public void Wire(
@@ -225,7 +205,10 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 leaveButton.onClick.AddListener(ReturnToShop);
             }
 
-            SetEndMatchVisible(false);
+            if (endMatchGroup != null)
+            {
+                endMatchGroup.SetActive(true);
+            }
         }
     }
 }

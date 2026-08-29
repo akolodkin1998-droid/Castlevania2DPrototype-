@@ -1,3 +1,4 @@
+using System;
 using Castlevania2D.Environment;
 using Castlevania2D.Save;
 using Castlevania2D.UI;
@@ -5,62 +6,122 @@ using UnityEngine;
 
 namespace Castlevania2D.Hub
 {
-    public sealed class HubDoorInteract2D : MonoBehaviour
+    [DisallowMultipleComponent]
+    public sealed class NpcTalk2D : MonoBehaviour
     {
         private const string PlayerObjectName = "Player_HeroKnight";
         private const string PromptResourcePath = "UI/InteractPrompt_F";
 
-        [SerializeField] private HubRoomTransition2D transition;
-        [SerializeField] private Transform destination;
-        [SerializeField] [Min(0.1f)] private float interactionDistance = 2.2f;
-        [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 2.4f, 0f);
+        [SerializeField] private string speakerName = "NPC";
+        [SerializeField] [TextArea(2, 6)] private string line;
+        [SerializeField] private string[] choices;
+        [SerializeField] [Min(0.1f)] private float interactionDistance = 2.4f;
+        [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 3.1f, 0f);
         [SerializeField] private Vector3 promptScale = new Vector3(0.48f, 0.48f, 1f);
         [SerializeField] [Min(0.01f)] private float promptPopDuration = 0.22f;
         [SerializeField] [Min(0f)] private float promptPopOffset = 0.2f;
         [SerializeField] private Sprite promptSprite;
-        [SerializeField] private bool enlargePlayer;
 
         private Transform player;
         private SpriteRenderer promptRenderer;
         private float nextPlayerSearchTime;
         private bool promptWanted;
         private float promptPop;
+        private bool talking;
+
+        public static bool IsTalking { get; private set; }
+
+        public event Action<int> ChoiceChosen;
+
+        public void ApplyDefaultsIfEmpty(string npcName, string spokenLine, string[] replyChoices)
+        {
+            if (string.IsNullOrWhiteSpace(speakerName) || speakerName == "NPC")
+            {
+                speakerName = npcName;
+            }
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                line = spokenLine;
+            }
+
+            if (choices == null || choices.Length == 0)
+            {
+                choices = replyChoices;
+            }
+        }
 
         private void Awake()
         {
             CreatePrompt();
         }
 
+        private void OnDisable()
+        {
+            CloseTalk();
+        }
+
         private void Update()
         {
             CachePlayerIfNeeded();
-            if (player == null || promptRenderer == null || destination == null || transition == null)
+            if (player == null || promptRenderer == null)
             {
                 return;
             }
 
             bool isNear = ((Vector2)(player.position - transform.position)).sqrMagnitude
                           <= interactionDistance * interactionDistance;
-            SaveLoadSessionController controller = SaveLoadSessionController.Instance;
-            bool canInteract = isNear
-                               && !transition.IsBusy
-                               && !HubMerchantTalk2D.BlocksHubInteract
-                               && !NpcTalk2D.IsTalking
-                               && !DialogueBoxUI.IsOpen
-                               && !SceneWarpTotem2D.IsBusy
-                               && (controller == null || controller.CanInteract);
+            SaveLoadSessionController session = SaveLoadSessionController.Instance;
+            bool canTalk = isNear
+                           && !SceneWarpTotem2D.IsBusy
+                           && (session == null || session.CanInteract);
 
-            promptWanted = canInteract;
+            if (talking && (!isNear || !DialogueBoxUI.IsOpen))
+            {
+                CloseTalk();
+            }
+
+            promptWanted = canTalk && !talking;
             TickPromptPop();
 
-            if (!canInteract || !UnityEngine.Input.GetKeyDown(KeyCode.F))
+            if (!canTalk || talking || !UnityEngine.Input.GetKeyDown(KeyCode.F))
             {
                 return;
             }
 
-            HubRoomView2D roomView = destination.GetComponentInParent<HubRoomView2D>();
-            bool scaleUp = enlargePlayer || roomView != null;
-            transition.TravelTo(destination.position, roomView, scaleUp);
+            OpenTalk();
+        }
+
+        public void OpenTalk()
+        {
+            talking = true;
+            IsTalking = true;
+            DialogueBoxUI.Ensure().Open(
+                speakerName,
+                line,
+                choices,
+                OnChoice);
+        }
+
+        public void CloseTalk()
+        {
+            talking = false;
+            if (IsTalking)
+            {
+                IsTalking = false;
+            }
+
+            if (DialogueBoxUI.IsOpen)
+            {
+                DialogueBoxUI.Ensure().Close();
+            }
+        }
+
+        private void OnChoice(int index)
+        {
+            talking = false;
+            IsTalking = false;
+            ChoiceChosen?.Invoke(index);
         }
 
         private void CachePlayerIfNeeded()
@@ -121,13 +182,16 @@ namespace Castlevania2D.Hub
         }
 
 #if UNITY_EDITOR
-        public void EditorAssign(HubRoomTransition2D roomTransition, Transform travelDestination, Sprite sprite)
+        public void EditorAssign(
+            string npcName,
+            string spokenLine,
+            string[] replyChoices,
+            Sprite sprite)
         {
-            transition = roomTransition;
-            destination = travelDestination;
+            speakerName = npcName;
+            line = spokenLine;
+            choices = replyChoices;
             promptSprite = sprite;
-            enlargePlayer = travelDestination != null
-                            && travelDestination.GetComponentInParent<HubRoomView2D>() != null;
         }
 #endif
     }

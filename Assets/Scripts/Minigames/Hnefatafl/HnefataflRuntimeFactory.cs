@@ -1,4 +1,3 @@
-using Castlevania2D.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -11,22 +10,25 @@ namespace Castlevania2D.Minigames.Hnefatafl
     public static class HnefataflRuntimeFactory
     {
         private const string BoardPath = "Minigames/Hnefatafl/Board/Board_9x9";
+        private const string TablePath = "Minigames/Hnefatafl/Table/WoodenTable";
         private const string AttackerAPath = "Minigames/Hnefatafl/Pieces/Attacker_A";
         private const string AttackerBPath = "Minigames/Hnefatafl/Pieces/Attacker_B";
         private const string DefenderAPath = "Minigames/Hnefatafl/Pieces/Defender_A";
         private const string DefenderBPath = "Minigames/Hnefatafl/Pieces/Defender_B";
         private const string KingPath = "Minigames/Hnefatafl/Pieces/King";
-        private const string SlotButtonPath = "UI/SaveSlotButton";
+        private static readonly Color RoomColor = new Color(0.07f, 0.035f, 0.02f, 1f);
+        private static readonly Color ButtonIdle = new Color(0.96f, 0.88f, 0.7f, 1f);
+        private static readonly Color ButtonHover = new Color(1f, 0.95f, 0.55f, 1f);
 
         public static HnefataflGameController Create()
         {
             Sprite boardSprite = LoadSprite(BoardPath);
+            Sprite tableSprite = LoadSprite(TablePath);
             Sprite attackerA = LoadSprite(AttackerAPath);
             Sprite attackerB = LoadSprite(AttackerBPath);
             Sprite defenderA = LoadSprite(DefenderAPath);
             Sprite defenderB = LoadSprite(DefenderBPath);
             Sprite king = LoadSprite(KingPath);
-            Sprite slotSprite = LoadSprite(SlotButtonPath);
 
             var root = new GameObject(
                 "Hnefatafl_Canvas",
@@ -47,10 +49,27 @@ namespace Castlevania2D.Minigames.Hnefatafl
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 
-            Image backdrop = CreateImage("Backdrop", root.transform);
-            Stretch(backdrop.rectTransform);
-            backdrop.color = new Color(0.03f, 0.02f, 0.025f, 1f);
-            backdrop.raycastTarget = false;
+            Image room = CreateImage("Room", root.transform);
+            Stretch(room.rectTransform);
+            room.color = RoomColor;
+            room.raycastTarget = false;
+
+            Image table = CreateImage("TableBackground", root.transform);
+            table.raycastTarget = false;
+            PlaceCoverBackground(table.rectTransform, tableSprite);
+            if (tableSprite != null)
+            {
+                table.sprite = tableSprite;
+                table.preserveAspect = true;
+                table.color = Color.white;
+                table.type = Image.Type.Simple;
+                table.useSpriteMesh = false;
+            }
+            else
+            {
+                Stretch(table.rectTransform);
+                table.color = RoomColor;
+            }
 
             Image boardImage = CreateImage("Board", root.transform);
             RectTransform boardRect = boardImage.rectTransform;
@@ -84,7 +103,6 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
             GameObject endMatchGroup = CreateEndMatchGroup(
                 root.transform,
-                slotSprite,
                 out Button restart,
                 out Button leave);
 
@@ -113,7 +131,6 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
         private static GameObject CreateEndMatchGroup(
             Transform parent,
-            Sprite slotSprite,
             out Button restart,
             out Button leave)
         {
@@ -123,19 +140,17 @@ namespace Castlevania2D.Minigames.Hnefatafl
             groupRect.anchorMin = new Vector2(0.5f, 0f);
             groupRect.anchorMax = new Vector2(0.5f, 0f);
             groupRect.pivot = new Vector2(0.5f, 0f);
-            groupRect.sizeDelta = new Vector2(420f, 220f);
-            groupRect.anchoredPosition = new Vector2(0f, 24f);
+            groupRect.sizeDelta = new Vector2(900f, 72f);
+            groupRect.anchoredPosition = new Vector2(0f, 28f);
 
-            leave = CreateMatchSlot(group.transform, slotSprite, "В ЛАВКУ", new Vector2(0f, 108f));
-            restart = CreateMatchSlot(group.transform, slotSprite, "ЗАНОВО", new Vector2(0f, 0f));
+            restart = CreateTextButton(group.transform, "ЗАНОВО", new Vector2(-220f, 0f));
+            leave = CreateTextButton(group.transform, "ЗАВЕРШИТЬ", new Vector2(220f, 0f));
 
-            group.SetActive(false);
             return group;
         }
 
-        private static Button CreateMatchSlot(
+        private static Button CreateTextButton(
             Transform parent,
-            Sprite slotSprite,
             string label,
             Vector2 anchoredPosition)
         {
@@ -145,51 +160,39 @@ namespace Castlevania2D.Minigames.Hnefatafl
             slotRect.anchorMin = new Vector2(0.5f, 0f);
             slotRect.anchorMax = new Vector2(0.5f, 0f);
             slotRect.pivot = new Vector2(0.5f, 0f);
-            slotRect.sizeDelta = new Vector2(380f, 96f);
+            slotRect.sizeDelta = new Vector2(380f, 72f);
             slotRect.anchoredPosition = anchoredPosition;
-
-            Image visual = CreateImage("Visual", slot.transform);
-            Stretch(visual.rectTransform);
-            visual.preserveAspect = true;
-            visual.raycastTarget = false;
-            if (slotSprite != null)
-            {
-                visual.sprite = slotSprite;
-                visual.color = Color.white;
-            }
-            else
-            {
-                visual.color = new Color(0.28f, 0.07f, 0.06f, 0.96f);
-            }
 
             var hotspot = new GameObject(
                 "Button",
                 typeof(RectTransform),
                 typeof(CanvasRenderer),
                 typeof(Image),
-                typeof(Button),
-                typeof(MenuButtonSlideFeedback));
+                typeof(Button));
             hotspot.transform.SetParent(slot.transform, false);
             Stretch(hotspot.GetComponent<RectTransform>());
             Image hotspotImage = hotspot.GetComponent<Image>();
             hotspotImage.color = new Color(1f, 1f, 1f, 0f);
             hotspotImage.raycastTarget = true;
-            Button button = hotspot.GetComponent<Button>();
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = Color.white;
-            colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
-            button.colors = colors;
 
-            hotspot.GetComponent<MenuButtonSlideFeedback>().AssignVisual(visual.rectTransform);
-
-            Text text = CreateText("Label", visual.transform);
+            Text text = CreateText("Label", hotspot.transform);
             Stretch(text.rectTransform);
             text.text = label;
-            text.fontSize = 28;
+            text.fontSize = 32;
             text.fontStyle = FontStyle.Bold;
             text.alignment = TextAnchor.MiddleCenter;
-            text.color = new Color(0.96f, 0.88f, 0.7f, 1f);
+            text.color = Color.white;
             text.raycastTarget = false;
+
+            Button button = hotspot.GetComponent<Button>();
+            button.targetGraphic = text;
+            ColorBlock colors = button.colors;
+            colors.normalColor = ButtonIdle;
+            colors.highlightedColor = ButtonHover;
+            colors.pressedColor = ButtonHover;
+            colors.selectedColor = ButtonHover;
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
             return button;
         }
 
@@ -203,7 +206,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
             var cameraObject = new GameObject("HnefataflCamera");
             Camera camera = cameraObject.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.03f, 0.02f, 0.025f, 1f);
+            camera.backgroundColor = RoomColor;
             camera.orthographic = true;
             camera.orthographicSize = 5f;
             camera.nearClipPlane = 0.3f;
@@ -226,6 +229,32 @@ namespace Castlevania2D.Minigames.Hnefatafl
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.raycastTarget = false;
             return text;
+        }
+
+        private static void PlaceCoverBackground(RectTransform rect, Sprite sprite)
+        {
+            const float ReferenceWidth = 1920f;
+            const float ReferenceHeight = 1080f;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            if (sprite == null)
+            {
+                rect.sizeDelta = new Vector2(ReferenceWidth, ReferenceHeight);
+                return;
+            }
+
+            float spriteWidth = sprite.rect.width;
+            float spriteHeight = sprite.rect.height;
+            if (spriteWidth < 1f || spriteHeight < 1f)
+            {
+                rect.sizeDelta = new Vector2(ReferenceWidth, ReferenceHeight);
+                return;
+            }
+
+            float scale = Mathf.Max(ReferenceWidth / spriteWidth, ReferenceHeight / spriteHeight);
+            rect.sizeDelta = new Vector2(spriteWidth * scale, spriteHeight * scale);
         }
 
         private static void Stretch(RectTransform rect)
