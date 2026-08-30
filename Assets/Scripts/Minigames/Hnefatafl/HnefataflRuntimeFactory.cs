@@ -16,9 +16,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
         private const string DefenderAPath = "Minigames/Hnefatafl/Pieces/Defender_A";
         private const string DefenderBPath = "Minigames/Hnefatafl/Pieces/Defender_B";
         private const string KingPath = "Minigames/Hnefatafl/Pieces/King";
+        private const string CoinPilePath = "Minigames/Hnefatafl/Coins/Pile_";
         private static readonly Color RoomColor = new Color(0.07f, 0.035f, 0.02f, 1f);
         private static readonly Color ButtonIdle = new Color(0.96f, 0.88f, 0.7f, 1f);
         private static readonly Color ButtonHover = new Color(1f, 0.95f, 0.55f, 1f);
+        private static readonly Color SliderTrack = new Color(0.18f, 0.1f, 0.05f, 0.92f);
+        private static readonly Color SliderFill = new Color(0.82f, 0.62f, 0.22f, 1f);
 
         public static HnefataflGameController Create()
         {
@@ -76,7 +79,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
             boardRect.anchorMin = new Vector2(0.5f, 0.5f);
             boardRect.anchorMax = new Vector2(0.5f, 0.5f);
             boardRect.pivot = new Vector2(0.5f, 0.5f);
-            boardRect.sizeDelta = new Vector2(860f, 860f);
+            boardRect.sizeDelta = new Vector2(1041f, 1041f);
             boardRect.anchoredPosition = new Vector2(0f, 20f);
             boardImage.preserveAspect = true;
             boardImage.raycastTarget = true;
@@ -106,6 +109,8 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 out Button restart,
                 out Button leave);
 
+            HnefataflBetPanel betPanel = CreateBetPanel(root.transform);
+
             EnsureCamera();
 
             if (Object.FindFirstObjectByType<EventSystem>() == null)
@@ -116,7 +121,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
             HnefataflBoardView view = root.GetComponent<HnefataflBoardView>();
             HnefataflGameController controller = root.GetComponent<HnefataflGameController>();
             view.Wire(boardRect, boardImage, piecesRoot);
-            controller.Wire(view, status, restart, leave, endMatchGroup);
+            controller.Wire(view, status, restart, leave, endMatchGroup, betPanel);
             view.Configure(
                 boardSprite,
                 attackerA,
@@ -127,6 +132,120 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 controller.HandlePlayerMove);
             Canvas.ForceUpdateCanvases();
             return controller;
+        }
+
+        private static HnefataflBetPanel CreateBetPanel(Transform parent)
+        {
+            var root = new GameObject("BetColumn", typeof(RectTransform), typeof(HnefataflBetPanel));
+            root.transform.SetParent(parent, false);
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            Stretch(rootRect);
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+
+            const float leftX = -700f;
+            Image opponentPile = CreatePileImage("OpponentPile", root.transform, new Vector2(leftX, 310f));
+            Image playerPile = CreatePileImage("PlayerPile", root.transform, new Vector2(leftX, -200f));
+
+            var controls = new GameObject("BetControls", typeof(RectTransform));
+            controls.transform.SetParent(root.transform, false);
+            Stretch(controls.GetComponent<RectTransform>());
+
+            Slider slider = CreateStakeSlider(controls.transform, new Vector2(leftX, -18f));
+            Text valueText = CreateText("StakeValue", controls.transform);
+            RectTransform valueRect = valueText.rectTransform;
+            valueRect.anchorMin = new Vector2(0.5f, 0.5f);
+            valueRect.anchorMax = new Vector2(0.5f, 0.5f);
+            valueRect.pivot = new Vector2(0.5f, 0.5f);
+            valueRect.sizeDelta = new Vector2(220f, 36f);
+            valueRect.anchoredPosition = new Vector2(leftX, 22f);
+            valueText.fontSize = 26;
+            valueText.fontStyle = FontStyle.Bold;
+            valueText.alignment = TextAnchor.MiddleCenter;
+            valueText.color = ButtonIdle;
+
+            Button confirm = CreateCenteredTextButton(
+                controls.transform,
+                "СДЕЛАТЬ СТАВКУ",
+                new Vector2(leftX, -380f));
+            ((RectTransform)confirm.transform.parent).sizeDelta = new Vector2(440f, 72f);
+
+            var piles = new Sprite[5];
+            for (int i = 0; i < piles.Length; i++)
+            {
+                piles[i] = LoadSprite(CoinPilePath + (i + 1));
+            }
+
+            HnefataflBetPanel panel = root.GetComponent<HnefataflBetPanel>();
+            panel.Configure(piles, slider, valueText, confirm, controls, playerPile, opponentPile);
+            return panel;
+        }
+
+        private static Image CreatePileImage(string name, Transform parent, Vector2 anchoredPosition)
+        {
+            Image image = CreateImage(name, parent);
+            RectTransform rect = image.rectTransform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(220f, 220f);
+            rect.anchoredPosition = anchoredPosition;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            image.enabled = false;
+            return image;
+        }
+
+        private static Slider CreateStakeSlider(Transform parent, Vector2 anchoredPosition)
+        {
+            var slot = new GameObject("StakeSlider", typeof(RectTransform), typeof(Slider));
+            slot.transform.SetParent(parent, false);
+            RectTransform slotRect = slot.GetComponent<RectTransform>();
+            slotRect.anchorMin = new Vector2(0.5f, 0.5f);
+            slotRect.anchorMax = new Vector2(0.5f, 0.5f);
+            slotRect.pivot = new Vector2(0.5f, 0.5f);
+            slotRect.sizeDelta = new Vector2(240f, 28f);
+            slotRect.anchoredPosition = anchoredPosition;
+
+            Image background = CreateImage("Background", slot.transform);
+            Stretch(background.rectTransform);
+            background.color = SliderTrack;
+            background.raycastTarget = true;
+
+            var fillArea = new GameObject("Fill Area", typeof(RectTransform));
+            fillArea.transform.SetParent(slot.transform, false);
+            RectTransform fillAreaRect = fillArea.GetComponent<RectTransform>();
+            Stretch(fillAreaRect);
+            fillAreaRect.offsetMin = new Vector2(6f, 6f);
+            fillAreaRect.offsetMax = new Vector2(-6f, -6f);
+
+            Image fill = CreateImage("Fill", fillArea.transform);
+            Stretch(fill.rectTransform);
+            fill.color = SliderFill;
+            fill.raycastTarget = false;
+
+            var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
+            handleArea.transform.SetParent(slot.transform, false);
+            RectTransform handleAreaRect = handleArea.GetComponent<RectTransform>();
+            Stretch(handleAreaRect);
+            handleAreaRect.offsetMin = new Vector2(10f, -8f);
+            handleAreaRect.offsetMax = new Vector2(-10f, 8f);
+
+            Image handle = CreateImage("Handle", handleArea.transform);
+            handle.rectTransform.sizeDelta = new Vector2(22f, 36f);
+            handle.color = ButtonIdle;
+            handle.raycastTarget = true;
+
+            Slider slider = slot.GetComponent<Slider>();
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = 0f;
+            slider.maxValue = HnefataflBetPanel.MaxStake;
+            slider.wholeNumbers = true;
+            slider.fillRect = fill.rectTransform;
+            slider.handleRect = handle.rectTransform;
+            slider.targetGraphic = handle;
+            slider.interactable = true;
+            return slider;
         }
 
         private static GameObject CreateEndMatchGroup(
@@ -149,17 +268,45 @@ namespace Castlevania2D.Minigames.Hnefatafl
             return group;
         }
 
+        private static Button CreateCenteredTextButton(
+            Transform parent,
+            string label,
+            Vector2 anchoredPosition)
+        {
+            return CreateTextButton(
+                parent,
+                label,
+                anchoredPosition,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f));
+        }
+
         private static Button CreateTextButton(
             Transform parent,
             string label,
             Vector2 anchoredPosition)
         {
+            return CreateTextButton(
+                parent,
+                label,
+                anchoredPosition,
+                new Vector2(0.5f, 0f),
+                new Vector2(0.5f, 0f));
+        }
+
+        private static Button CreateTextButton(
+            Transform parent,
+            string label,
+            Vector2 anchoredPosition,
+            Vector2 anchorMin,
+            Vector2 pivot)
+        {
             var slot = new GameObject(label, typeof(RectTransform));
             slot.transform.SetParent(parent, false);
             RectTransform slotRect = slot.GetComponent<RectTransform>();
-            slotRect.anchorMin = new Vector2(0.5f, 0f);
-            slotRect.anchorMax = new Vector2(0.5f, 0f);
-            slotRect.pivot = new Vector2(0.5f, 0f);
+            slotRect.anchorMin = anchorMin;
+            slotRect.anchorMax = anchorMin;
+            slotRect.pivot = pivot;
             slotRect.sizeDelta = new Vector2(380f, 72f);
             slotRect.anchoredPosition = anchoredPosition;
 
@@ -191,6 +338,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
             colors.highlightedColor = ButtonHover;
             colors.pressedColor = ButtonHover;
             colors.selectedColor = ButtonHover;
+            colors.disabledColor = new Color(0.45f, 0.4f, 0.35f, 0.4f);
             colors.fadeDuration = 0.08f;
             button.colors = colors;
             return button;

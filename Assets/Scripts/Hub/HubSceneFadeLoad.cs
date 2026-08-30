@@ -1,4 +1,5 @@
 using System.Collections;
+using Castlevania2D.Loot;
 using Castlevania2D.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -13,6 +14,8 @@ namespace Castlevania2D.Hub
             {
                 return;
             }
+
+            PlayerInventorySession.CaptureFromScene();
 
             var runnerObject = new GameObject(nameof(HubSceneFadeLoadRunner));
             Object.DontDestroyOnLoad(runnerObject);
@@ -40,6 +43,9 @@ namespace Castlevania2D.Hub
                     yield return null;
                 }
             }
+
+            PlayerInventorySession.ApplyToScene();
+            PlayerInventoryHudBootstrap.Refresh();
 
             yield return fade.FadeTo(0f, fadeDuration);
             Destroy(gameObject);

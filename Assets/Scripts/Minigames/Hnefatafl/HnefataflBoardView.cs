@@ -21,7 +21,8 @@ namespace Castlevania2D.Minigames.Hnefatafl
         [SerializeField] private RectTransform boardRect;
         [SerializeField] private Image boardImage;
         [SerializeField] private RectTransform piecesRoot;
-        [SerializeField] private float pieceScale = 0.81f;
+        [SerializeField] private float pieceScale = 0.980f;
+        [SerializeField] private float pieceNudgeX = 0.08f;
 
         private readonly Dictionary<HnefataflCoord, HnefataflPieceView> pieces =
             new Dictionary<HnefataflCoord, HnefataflPieceView>(32);
@@ -437,7 +438,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
             Rect grid = piecesRoot.rect;
             float cellW = grid.width / HnefataflBoardState.Size;
             float cellH = grid.height / HnefataflBoardState.Size;
-            float x = grid.xMin + (coord.Col + 0.5f) * cellW;
+            float x = grid.xMin + (coord.Col + 0.5f) * cellW + cellW * pieceNudgeX - 3f;
             float y = grid.yMax - (coord.Row + 0.5f) * cellH;
             return new Vector2(x, y);
         }

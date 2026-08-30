@@ -24,18 +24,6 @@ namespace Castlevania2D.UI
             UiFillImage.Configure(healthFill);
             UiFillImage.Configure(blockFill);
             blockDurability = blockDurabilitySource as IBlockDurability;
-
-            EnsureInventoryHudView();
-        }
-
-        private void EnsureInventoryHudView()
-        {
-            if (GetComponent<PlayerInventoryHudView>() != null)
-            {
-                return;
-            }
-
-            gameObject.AddComponent<PlayerInventoryHudView>();
         }
 
         private void OnEnable()

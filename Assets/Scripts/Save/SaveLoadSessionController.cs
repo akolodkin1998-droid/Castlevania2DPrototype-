@@ -1,5 +1,6 @@
 using System.Collections;
 using Castlevania2D.Environment;
+using Castlevania2D.Loot;
 using Castlevania2D.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -199,6 +200,7 @@ namespace Castlevania2D.Save
                 return;
             }
 
+            PlayerInventorySession.ReplaceFromPlayerSave(data.player);
             menuView.SetSlotText(slotIndex, data.timestamp);
         }
 
@@ -263,10 +265,12 @@ namespace Castlevania2D.Save
             UnsubscribeFromMenu();
             menuOpen = false;
             menuOpenedAfterDeath = false;
+            PlayerInventorySession.SuppressSceneBootstrap = true;
 
             AsyncOperation load = SceneManager.LoadSceneAsync(PrototypeSceneName, LoadSceneMode.Single);
             if (load == null)
             {
+                PlayerInventorySession.SuppressSceneBootstrap = false;
                 yield return fadeOverlay.FadeTo(0f, TransitionFadeDuration);
                 ResumeWorldAfterFailure();
                 yield break;
@@ -280,6 +284,11 @@ namespace Castlevania2D.Save
             {
                 Debug.LogError("[SaveLoadSessionController] Saved state could not be applied.");
             }
+
+            PlayerInventorySession.ReplaceFromPlayerSave(data.player);
+            PlayerInventorySession.SuppressSceneBootstrap = false;
+            PlayerInventorySession.ApplyToScene();
+            PlayerInventoryHudBootstrap.Refresh();
 
             yield return fadeOverlay.FadeTo(0f, TransitionFadeDuration);
             Time.timeScale = previousTimeScale;
@@ -421,6 +430,7 @@ namespace Castlevania2D.Save
             yield return fadeOverlay.FadeTo(1f, TransitionFadeDuration);
 
             UnsubscribeFromMainMenu();
+            PlayerInventorySession.Clear();
             AsyncOperation load =
                 SceneManager.LoadSceneAsync(PrototypeSceneName, LoadSceneMode.Single);
             if (load == null)
@@ -484,6 +494,7 @@ namespace Castlevania2D.Save
             menuOpen = false;
             menuOpenedAfterDeath = false;
             transitionInProgress = false;
+            PlayerInventorySession.SuppressSceneBootstrap = false;
             Time.timeScale = previousTimeScale;
         }
     }

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Castlevania2D.Minigames.Hnefatafl
 {
     /// <summary>
-    /// 9x9 Tablut / Kiev-Rus tavlei: attackers move first, king escapes via corners.
+    /// 9x9 Hnefatafl (Ethnic Board Games / Viking Game): attackers first, king escapes via corners.
     /// </summary>
     public sealed class HnefataflBoardState
     {
@@ -119,7 +119,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 return true;
             }
 
-            if (IsKingCaptured(kingPos))
+            if (piece == HnefataflPieceKind.Attacker && IsKingCaptured(kingPos))
             {
                 this[kingPos.Row, kingPos.Col] = HnefataflPieceKind.None;
                 Result = HnefataflGameResult.AttackersWin;
@@ -256,10 +256,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 return 4;
             }
 
-            bool nextToThrone =
-                Math.Abs(king.Row - ThroneRow) + Math.Abs(king.Col - ThroneCol) == 1;
-            // Three attacker cells plus the throne anvil.
-            return nextToThrone ? 4 : 2;
+            if (IsNextToThrone(king.Row, king.Col))
+            {
+                return 3;
+            }
+
+            return IsOrthogonallyAdjacentToCorner(king.Row, king.Col) ? 1 : 2;
         }
 
         public static HnefataflSide Opposite(HnefataflSide side) =>
@@ -414,18 +416,59 @@ namespace Castlevania2D.Minigames.Hnefatafl
         {
             if (IsThrone(king.Row, king.Col))
             {
-                return CountKingHostiles(king) >= 4;
+                return CountAdjacentAttackers(king) >= 4;
             }
 
-            bool nextToThrone =
-                Math.Abs(king.Row - ThroneRow) + Math.Abs(king.Col - ThroneCol) == 1;
-            if (nextToThrone)
+            if (IsNextToThrone(king.Row, king.Col))
             {
-                return CountKingHostiles(king) >= 4;
+                return CountAdjacentAttackers(king) >= 3;
             }
 
-            return IsHostileToKing(king.Row - 1, king.Col) && IsHostileToKing(king.Row + 1, king.Col)
-                || IsHostileToKing(king.Row, king.Col - 1) && IsHostileToKing(king.Row, king.Col + 1);
+            return IsKingAnvil(king.Row - 1, king.Col) && IsKingAnvil(king.Row + 1, king.Col)
+                || IsKingAnvil(king.Row, king.Col - 1) && IsKingAnvil(king.Row, king.Col + 1);
+        }
+
+        private int CountAdjacentAttackers(HnefataflCoord king)
+        {
+            int count = 0;
+            if (IsAttackerAt(king.Row - 1, king.Col)) count++;
+            if (IsAttackerAt(king.Row + 1, king.Col)) count++;
+            if (IsAttackerAt(king.Row, king.Col - 1)) count++;
+            if (IsAttackerAt(king.Row, king.Col + 1)) count++;
+            return count;
+        }
+
+        private bool IsAttackerAt(int row, int col)
+        {
+            return IsInside(row, col) && this[row, col] == HnefataflPieceKind.Attacker;
+        }
+
+        private bool IsKingAnvil(int row, int col)
+        {
+            if (!IsInside(row, col))
+            {
+                return false;
+            }
+
+            if (this[row, col] == HnefataflPieceKind.Attacker)
+            {
+                return true;
+            }
+
+            return this[row, col] == HnefataflPieceKind.None && IsCorner(row, col);
+        }
+
+        public static bool IsNextToThrone(int row, int col)
+        {
+            return Math.Abs(row - ThroneRow) + Math.Abs(col - ThroneCol) == 1;
+        }
+
+        public static bool IsOrthogonallyAdjacentToCorner(int row, int col)
+        {
+            return IsCorner(row - 1, col)
+                || IsCorner(row + 1, col)
+                || IsCorner(row, col - 1)
+                || IsCorner(row, col + 1);
         }
 
         private bool IsHostileToKing(int row, int col)
@@ -435,13 +478,12 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 return false;
             }
 
-            HnefataflPieceKind occupant = this[row, col];
-            if (occupant == HnefataflPieceKind.Attacker)
+            if (this[row, col] == HnefataflPieceKind.Attacker)
             {
                 return true;
             }
 
-            if (occupant != HnefataflPieceKind.None)
+            if (this[row, col] != HnefataflPieceKind.None)
             {
                 return false;
             }

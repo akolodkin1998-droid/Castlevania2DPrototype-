@@ -82,6 +82,17 @@ namespace Castlevania2D.UI
 
         private void Start()
         {
+            Rebind();
+            ApplyPanelLayout();
+        }
+
+        private void OnEnable()
+        {
+            Rebind();
+        }
+
+        public void Rebind()
+        {
             TryBindInventory(force: true);
             ApplyPanelLayout();
             RefreshSlots();
@@ -89,10 +100,15 @@ namespace Castlevania2D.UI
 
         private void Update()
         {
+            if (!isActiveAndEnabled)
+            {
+                return;
+            }
+
             bool held = UnityEngine.Input.GetKey(holdKey);
             SetVisible(held);
 
-            if (inventory == null && Time.time >= nextBindAttemptTime)
+            if (inventory == null && Time.unscaledTime >= nextBindAttemptTime)
             {
                 TryBindInventory(force: false);
             }
@@ -137,9 +153,9 @@ namespace Castlevania2D.UI
                 return;
             }
 
-            nextBindAttemptTime = Time.time + 1f;
+            nextBindAttemptTime = Time.unscaledTime + 0.25f;
 
-            GameObject player = GameObject.Find(playerObjectName);
+            GameObject player = FindPlayer();
             if (player == null)
             {
                 return;
@@ -153,6 +169,7 @@ namespace Castlevania2D.UI
 
             if (inventory == found)
             {
+                RefreshSlots();
                 return;
             }
 
@@ -160,6 +177,23 @@ namespace Castlevania2D.UI
             inventory = found;
             inventory.Changed += OnInventoryChanged;
             RefreshSlots();
+        }
+
+        private GameObject FindPlayer()
+        {
+            Transform[] transforms = Object.FindObjectsByType<Transform>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform transform = transforms[i];
+                if (transform != null && transform.name == playerObjectName)
+                {
+                    return transform.gameObject;
+                }
+            }
+
+            return null;
         }
 
         private void Unsubscribe()

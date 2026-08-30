@@ -36,6 +36,7 @@ namespace Castlevania2D.Hub
         {
             if (index == 0)
             {
+                HubTaflSession.CaptureCoinsFromPlayer();
                 HubSceneFadeLoad.Load(HubTaflSession.TaflSceneName);
                 return;
             }

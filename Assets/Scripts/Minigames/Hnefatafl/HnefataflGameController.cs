@@ -6,7 +6,8 @@ using UnityEngine.UI;
 namespace Castlevania2D.Minigames.Hnefatafl
 {
     /// <summary>
-    /// Runs one Hnefatafl match: random side for the player, attackers always move first.
+    /// Runs one Hnefatafl match after both sides have placed the same stake.
+    /// Attackers always move first; the player's side is random.
     /// </summary>
     public sealed class HnefataflGameController : MonoBehaviour
     {
@@ -15,6 +16,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
         [SerializeField] private Button restartButton;
         [SerializeField] private Button leaveButton;
         [SerializeField] private GameObject endMatchGroup;
+        [SerializeField] private HnefataflBetPanel betPanel;
         [SerializeField] private float aiThinkDelay = 0.25f;
         [SerializeField] private float aiMoveDuration = 0.45f;
         [SerializeField] private int aiDepth = 3;
@@ -23,41 +25,60 @@ namespace Castlevania2D.Minigames.Hnefatafl
         private HnefataflAi ai;
         private HnefataflSide playerSide;
         private bool aiBusy;
+        private bool matchStarted;
+        private bool potSettled;
+        private int liveStake;
 
         private void Awake()
         {
             ai = new HnefataflAi(aiDepth);
             if (restartButton != null)
             {
-                restartButton.onClick.AddListener(StartNewGame);
+                restartButton.onClick.AddListener(OnRestartClicked);
             }
 
             if (leaveButton != null)
             {
                 leaveButton.onClick.AddListener(ReturnToShop);
             }
+
+            if (betPanel != null)
+            {
+                betPanel.BetConfirmed += OnBetConfirmed;
+            }
         }
 
         private void Start()
         {
-            StartNewGame();
+            EnterBettingPhase();
         }
 
         private void OnDestroy()
         {
             if (restartButton != null)
             {
-                restartButton.onClick.RemoveListener(StartNewGame);
+                restartButton.onClick.RemoveListener(OnRestartClicked);
             }
 
             if (leaveButton != null)
             {
                 leaveButton.onClick.RemoveListener(ReturnToShop);
             }
+
+            if (betPanel != null)
+            {
+                betPanel.BetConfirmed -= OnBetConfirmed;
+            }
         }
 
         public void StartNewGame()
         {
+            if (!matchStarted)
+            {
+                EnterBettingPhase();
+                return;
+            }
+
             StopAllCoroutines();
             aiBusy = false;
 
@@ -86,7 +107,7 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
         public void HandlePlayerMove(HnefataflMove move)
         {
-            if (aiBusy || board == null || board.Result != HnefataflGameResult.None)
+            if (!matchStarted || aiBusy || board == null || board.Result != HnefataflGameResult.None)
             {
                 return;
             }
@@ -111,6 +132,87 @@ namespace Castlevania2D.Minigames.Hnefatafl
 
             SetStatus(BuildTurnStatus());
             StartCoroutine(AiTurnRoutine());
+        }
+
+        public void Wire(
+            HnefataflBoardView view,
+            Text status,
+            Button restart,
+            Button leave,
+            GameObject endMatchRoot,
+            HnefataflBetPanel stakes)
+        {
+            boardView = view;
+            statusText = status;
+            restartButton = restart;
+            leaveButton = leave;
+            endMatchGroup = endMatchRoot;
+            betPanel = stakes;
+            if (restartButton != null)
+            {
+                restartButton.onClick.RemoveListener(OnRestartClicked);
+                restartButton.onClick.AddListener(OnRestartClicked);
+            }
+
+            if (leaveButton != null)
+            {
+                leaveButton.onClick.RemoveListener(ReturnToShop);
+                leaveButton.onClick.AddListener(ReturnToShop);
+            }
+
+            if (betPanel != null)
+            {
+                betPanel.BetConfirmed -= OnBetConfirmed;
+                betPanel.BetConfirmed += OnBetConfirmed;
+            }
+
+            if (endMatchGroup != null)
+            {
+                endMatchGroup.SetActive(true);
+            }
+        }
+
+        private void OnBetConfirmed(int stake)
+        {
+            if (matchStarted || !HubTaflSession.TrySpend(stake))
+            {
+                return;
+            }
+
+            liveStake = stake;
+            potSettled = false;
+            matchStarted = true;
+            betPanel?.LockPiles(stake);
+            StartNewGame();
+        }
+
+        private void OnRestartClicked()
+        {
+            if (matchStarted && board != null && board.Result == HnefataflGameResult.None)
+            {
+                StartNewGame();
+                return;
+            }
+
+            EnterBettingPhase();
+        }
+
+        private void EnterBettingPhase()
+        {
+            StopAllCoroutines();
+            aiBusy = false;
+            matchStarted = false;
+            potSettled = false;
+            liveStake = 0;
+            board = new HnefataflBoardState();
+            if (boardView != null)
+            {
+                boardView.BindBoard(board, HnefataflSide.Attackers);
+                boardView.SetInputEnabled(false);
+            }
+
+            betPanel?.EnterBetting(HubTaflSession.Coins);
+            SetStatus("Сделайте ставку, чтобы начать партию.");
         }
 
         private IEnumerator AiTurnRoutine()
@@ -155,10 +257,26 @@ namespace Castlevania2D.Minigames.Hnefatafl
                 || (board.Result == HnefataflGameResult.DefendersWin
                     && playerSide == HnefataflSide.Defenders);
 
+            if (!potSettled && liveStake > 0)
+            {
+                potSettled = true;
+                if (playerWon)
+                {
+                    HubTaflSession.AddCoins(liveStake * 2);
+                }
+            }
+
             string sideName = playerSide == HnefataflSide.Attackers ? "атакующие" : "защитники";
-            SetStatus(playerWon
-                ? $"Победа! Вы играли за {sideName}."
-                : $"Поражение. Вы играли за {sideName}.");
+            if (playerWon)
+            {
+                SetStatus(liveStake > 0
+                    ? $"Победа! Вы играли за {sideName}. +{liveStake} монет."
+                    : $"Победа! Вы играли за {sideName}.");
+            }
+            else
+            {
+                SetStatus($"Поражение. Вы играли за {sideName}.");
+            }
         }
 
         private string BuildTurnStatus()
@@ -179,36 +297,6 @@ namespace Castlevania2D.Minigames.Hnefatafl
         {
             HubTaflSession.MarkReturnToShop();
             HubSceneFadeLoad.Load(HubTaflSession.HubSceneName);
-        }
-
-        public void Wire(
-            HnefataflBoardView view,
-            Text status,
-            Button restart,
-            Button leave,
-            GameObject endMatchRoot)
-        {
-            boardView = view;
-            statusText = status;
-            restartButton = restart;
-            leaveButton = leave;
-            endMatchGroup = endMatchRoot;
-            if (restartButton != null)
-            {
-                restartButton.onClick.RemoveListener(StartNewGame);
-                restartButton.onClick.AddListener(StartNewGame);
-            }
-
-            if (leaveButton != null)
-            {
-                leaveButton.onClick.RemoveListener(ReturnToShop);
-                leaveButton.onClick.AddListener(ReturnToShop);
-            }
-
-            if (endMatchGroup != null)
-            {
-                endMatchGroup.SetActive(true);
-            }
         }
     }
 }

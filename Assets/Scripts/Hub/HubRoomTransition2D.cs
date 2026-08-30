@@ -35,6 +35,7 @@ namespace Castlevania2D.Hub
             CachePlayer();
             if (HubTaflSession.ConsumeReturnToShop())
             {
+                HubTaflSession.ApplyCoinsToPlayer();
                 ResumeInsideShop();
             }
         }

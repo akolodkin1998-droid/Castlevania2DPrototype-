@@ -13,13 +13,26 @@ namespace Castlevania2D.Loot
         private const string PlayerObjectName = "Player_HeroKnight";
         private const string BossObjectName = "Boss_Flower";
         private const int StartingMaraTearCount = 10;
+        private const int StartingCommonCount = 500;
         private const int BossMaraTearDropCount = 5;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
             Scene activeScene = SceneManager.GetActiveScene();
-            if (!activeScene.IsValid() || activeScene.name != "Prototype")
+            if (!activeScene.IsValid())
+            {
+                return;
+            }
+
+            if (activeScene.name == "Hub")
+            {
+                EnsurePlayerComponents();
+                RestoreOrGrantStartingLoot();
+                return;
+            }
+
+            if (activeScene.name != "Prototype")
             {
                 return;
             }
@@ -31,6 +44,7 @@ namespace Castlevania2D.Loot
             }
 
             EnsurePlayerComponents();
+            RestoreOrGrantStartingLoot();
             WireSceneEnemies();
         }
 
@@ -74,13 +88,10 @@ namespace Castlevania2D.Loot
                 return;
             }
 
-            PlayerLootInventory inventory = player.GetComponent<PlayerLootInventory>();
-            if (inventory == null)
+            if (player.GetComponent<PlayerLootInventory>() == null)
             {
-                inventory = player.AddComponent<PlayerLootInventory>();
+                player.AddComponent<PlayerLootInventory>();
             }
-
-            inventory.EnsureMinimum(LootItemId.MaraTear, StartingMaraTearCount);
 
             if (player.GetComponent<PlayerQuickAccessInventory>() == null)
             {
@@ -91,6 +102,36 @@ namespace Castlevania2D.Loot
             {
                 player.AddComponent<Castlevania2D.Combat.SporeBagActivator2D>();
             }
+        }
+
+        private static void RestoreOrGrantStartingLoot()
+        {
+            if (PlayerInventorySession.SuppressSceneBootstrap)
+            {
+                return;
+            }
+
+            if (PlayerInventorySession.HasSnapshot)
+            {
+                PlayerInventorySession.ApplyToScene();
+                return;
+            }
+
+            GameObject player = GameObject.Find(PlayerObjectName);
+            if (player == null)
+            {
+                return;
+            }
+
+            PlayerLootInventory inventory = player.GetComponent<PlayerLootInventory>();
+            if (inventory == null)
+            {
+                return;
+            }
+
+            inventory.EnsureMinimum(LootItemId.MaraTear, StartingMaraTearCount);
+            inventory.EnsureMinimum(LootItemId.Common, StartingCommonCount);
+            PlayerInventorySession.CaptureFromScene();
         }
 
         private static void WireSceneEnemies()
