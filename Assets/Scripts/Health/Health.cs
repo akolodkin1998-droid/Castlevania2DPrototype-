@@ -11,6 +11,8 @@ namespace Castlevania2D.Health
 
         private IDamageBlocker[] damageBlockers;
 
+        public static event Action<Health> Enabled;
+
         public event Action<int, int> HealthChanged;
         public event Action<DamageInfo> Damaged;
         public event Action Died;
@@ -24,6 +26,11 @@ namespace Castlevania2D.Health
         {
             damageBlockers = GetComponents<IDamageBlocker>();
             CurrentHealth = Mathf.Max(1, maxHealth);
+        }
+
+        private void OnEnable()
+        {
+            Enabled?.Invoke(this);
         }
 
         private void Start()

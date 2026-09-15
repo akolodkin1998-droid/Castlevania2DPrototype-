@@ -1,6 +1,7 @@
 using Castlevania2D.Combat;
 using Castlevania2D.Input;
 using Castlevania2D.Movement;
+using Castlevania2D.Vfx;
 using UnityEngine;
 
 namespace Castlevania2D.Enemies
@@ -135,6 +136,7 @@ namespace Castlevania2D.Enemies
 
             // Any melee (or other) hit is lethal: tentacles are 1 HP.
             currentHealth = 0;
+            EnemyHitVfx2D.PlayOn(this, damageInfo);
             BeginDying();
             return DamageResult.Applied;
         }

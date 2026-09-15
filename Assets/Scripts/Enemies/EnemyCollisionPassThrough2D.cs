@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Castlevania2D.Vfx;
 using EnemyHealth = Castlevania2D.Health.Health;
 
 namespace Castlevania2D.Enemies
@@ -67,6 +68,8 @@ namespace Castlevania2D.Enemies
             {
                 host.AddComponent<EnemySpriteOverlapSort2D>();
             }
+
+            EnemyHitVfx2D.EnsureOn(host);
         }
 
         public static bool IsEnemyBody(Collider2D collider)

@@ -39,6 +39,14 @@ public static class GiantLikhoSetupEditor
         "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Attack2/Jump";
     private const string MeleeDestinationFolder =
         "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Attack3";
+    private const string DeathSourceFolder =
+        @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\GGWP";
+    private const string DeathDestinationFolder =
+        "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Death";
+    private const string BellyBounceSourceFolder =
+        @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\Прыжокна пузо";
+    private const string BellyBounceDestinationFolder =
+        "Assets/Art/Sprites/Characters/Enemies/GiantLikho/BellyBounce";
     private const string PrefabPath = "Assets/Prefabs/Enemies/Enemy_GiantLikho.prefab";
     private const string ScenePath = "Assets/Scenes/Prototype.unity";
     private const string ObjectName = "ОгромноеЛихо";
@@ -89,6 +97,102 @@ public static class GiantLikhoSetupEditor
 
         AssetDatabase.SaveAssets();
         return $"Giant Likho Attack 3 assigned: {meleeFrames.Length} frames (collider unchanged).";
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Assign Giant Likho Death")]
+    public static void AssignDeathFromMenu()
+    {
+        try
+        {
+            Debug.Log(AssignDeathToExistingPrefab());
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    public static string AssignDeathToExistingPrefab()
+    {
+        EnsureFolder(DeathDestinationFolder);
+        Sprite[] deathFrames = ImportNumberedFrames(
+            DeathSourceFolder,
+            DeathDestinationFolder,
+            "GiantLikho_Death_",
+            expectedFrameCount: 7);
+
+        GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+        try
+        {
+            GiantLikhoEnemy2D controller = contents.GetComponent<GiantLikhoEnemy2D>();
+            if (controller == null)
+            {
+                throw new InvalidOperationException(
+                    "Enemy_GiantLikho prefab has no GiantLikhoEnemy2D.");
+            }
+
+            Health health = contents.GetComponent<Health>();
+            if (health != null)
+            {
+                var healthSerialized = new SerializedObject(health);
+                healthSerialized.FindProperty("destroyOnDeath").boolValue = false;
+                healthSerialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            controller.EditorAssignDeathFrames(deathFrames);
+            PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        AssetDatabase.SaveAssets();
+        return $"Giant Likho death assigned: {deathFrames.Length} frames. Corpse stays after the clip.";
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Assign Giant Likho Belly Bounce")]
+    public static void AssignBellyBounceFromMenu()
+    {
+        try
+        {
+            Debug.Log(AssignBellyBounceToExistingPrefab());
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    public static string AssignBellyBounceToExistingPrefab()
+    {
+        EnsureFolder(BellyBounceDestinationFolder);
+        Sprite[] bounceFrames = ImportNumberedFrames(
+            BellyBounceSourceFolder,
+            BellyBounceDestinationFolder,
+            "GiantLikho_BellyBounce_",
+            expectedFrameCount: 9);
+
+        GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+        try
+        {
+            GiantLikhoEnemy2D controller = contents.GetComponent<GiantLikhoEnemy2D>();
+            if (controller == null)
+            {
+                throw new InvalidOperationException(
+                    "Enemy_GiantLikho prefab has no GiantLikhoEnemy2D.");
+            }
+
+            controller.EditorAssignBellyBounceFrames(bounceFrames);
+            PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        AssetDatabase.SaveAssets();
+        return $"Giant Likho belly bounce assigned: {bounceFrames.Length} frames.";
     }
 
     [MenuItem("Tools/Castlevania 2D/Setup Giant Likho Miniboss")]
@@ -269,7 +373,7 @@ public static class GiantLikhoSetupEditor
             Health health = root.AddComponent<Health>();
             var healthSerialized = new SerializedObject(health);
             healthSerialized.FindProperty("maxHealth").intValue = MaxHealth;
-            healthSerialized.FindProperty("destroyOnDeath").boolValue = true;
+            healthSerialized.FindProperty("destroyOnDeath").boolValue = false;
             healthSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             GiantLikhoEnemy2D controller = root.AddComponent<GiantLikhoEnemy2D>();

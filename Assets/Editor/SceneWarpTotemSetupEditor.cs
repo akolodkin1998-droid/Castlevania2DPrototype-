@@ -28,6 +28,13 @@ public static class SceneWarpTotemSetupEditor
     {
         EditorApplication.delayCall += TrySetupFromFlag;
         EditorApplication.delayCall += TryOpenPrototypeFromFlag;
+        EditorApplication.update += PollOpenPrototypeFlag;
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Open Prototype Scene")]
+    public static void OpenPrototypeFromMenu()
+    {
+        OpenPrototypeScene();
     }
 
     [MenuItem("Tools/Castlevania 2D/Place Warp Totems")]
@@ -67,6 +74,14 @@ public static class SceneWarpTotemSetupEditor
         }
     }
 
+    private static void PollOpenPrototypeFlag()
+    {
+        if (File.Exists(OpenPrototypeFlagPath))
+        {
+            TryOpenPrototypeFromFlag();
+        }
+    }
+
     private static void TryOpenPrototypeFromFlag()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -80,7 +95,24 @@ public static class SceneWarpTotemSetupEditor
         }
 
         File.Delete(OpenPrototypeFlagPath);
-        EditorSceneManager.OpenScene(PrototypeScenePath, OpenSceneMode.Single);
+        OpenPrototypeScene();
+    }
+
+    private static void OpenPrototypeScene()
+    {
+        if (!File.Exists(PrototypeScenePath))
+        {
+            Debug.LogError($"[SceneWarpTotemSetupEditor] Missing {PrototypeScenePath}.");
+            return;
+        }
+
+        Scene active = SceneManager.GetActiveScene();
+        if (active.path != PrototypeScenePath)
+        {
+            EditorSceneManager.OpenScene(PrototypeScenePath, OpenSceneMode.Single);
+        }
+
+        Debug.Log($"[SceneWarpTotemSetupEditor] Opened {PrototypeScenePath}.");
     }
 
     public static string PlaceTotems()

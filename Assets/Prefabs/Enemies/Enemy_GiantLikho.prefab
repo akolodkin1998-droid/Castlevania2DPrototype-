@@ -177,7 +177,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 200
-  destroyOnDeath: 1
+  destroyOnDeath: 0
 --- !u!114 &8932256571013975297
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,3 +301,35 @@ MonoBehaviour:
   meleeHitboxYOffset: 1.1
   meleeHitStartFrame: 7
   meleeHitEndFrame: 8
+  minMeleePerCycle: 1
+  maxMeleePerCycle: 2
+  rareTripleMeleeChance: 0.12
+  deathFrames:
+  - {fileID: 21300000, guid: 5ec57d5b23004362b762204b7324ca5f, type: 3}
+  - {fileID: 21300000, guid: 9b55d587d06e4b929ab9c1469006a1d0, type: 3}
+  - {fileID: 21300000, guid: 71882f8c4e6d40259dbdb9d16f24d2d5, type: 3}
+  - {fileID: 21300000, guid: a277e3c938f94319ae0c178126f04fd8, type: 3}
+  - {fileID: 21300000, guid: 6489b65dea034743beaed714205b0f4c, type: 3}
+  - {fileID: 21300000, guid: 3ee2ebc4cd8f4293a2ad980173817d5a, type: 3}
+  - {fileID: 21300000, guid: 7e221238b3ed435ea7be66f2a764d660, type: 3}
+  deathFrameRate: 10
+  deathColliderSize: {x: 1.65, y: 0.38}
+  deathColliderOffset: {x: 0, y: 0.16}
+  deathGroundSink: 0.47
+  bellyBounceFrames:
+  - {fileID: 21300000, guid: bd64e8a28c944b43af04b1adb99e8d7a, type: 3}
+  - {fileID: 21300000, guid: 5d37ec51f7774d388b637bc9a09b1ba7, type: 3}
+  - {fileID: 21300000, guid: 62518614adf141289738f5d94d7680eb, type: 3}
+  - {fileID: 21300000, guid: 371fcc4c56bc4918a6dde9196a273638, type: 3}
+  - {fileID: 21300000, guid: dadae4a6adee4d42a6c276cb52eab927, type: 3}
+  - {fileID: 21300000, guid: 903d8afc623c40ca9bbd5935a6c60f7b, type: 3}
+  - {fileID: 21300000, guid: 2a28e28479a44e4f90c1213d968f3b96, type: 3}
+  - {fileID: 21300000, guid: 2a79b73a78e145e39f34f0805ac64228, type: 3}
+  - {fileID: 21300000, guid: 7835add74b7a47fb8cdabadddf7f90a7, type: 3}
+  bellyBounceFrameRate: 35
+  bellyBounceUpSpeed: 12.5
+  bellyBounceLeftSpeed: 6
+  corpseDragDistance: 2.4
+  bellyBounceKnockbackDuration: 0.2
+  bellyZoneMinX: -0.32
+  bellyZoneMaxX: 0.22

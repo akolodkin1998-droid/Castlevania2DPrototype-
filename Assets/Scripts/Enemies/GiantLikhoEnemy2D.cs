@@ -1,6 +1,8 @@
 using Castlevania2D.CameraFx;
 using Castlevania2D.Combat;
+using Castlevania2D.Input;
 using Castlevania2D.Movement;
+using Castlevania2D.Player;
 using UnityEngine;
 using EnemyHealth = Castlevania2D.Health.Health;
 
@@ -84,10 +86,28 @@ namespace Castlevania2D.Enemies
         [SerializeField] [Min(1)] private int maxMeleePerCycle = 2;
         [SerializeField] [Range(0f, 1f)] private float rareTripleMeleeChance = 0.12f;
 
+        [Header("Death")]
+        [SerializeField] private Sprite[] deathFrames;
+        [SerializeField] [Min(1f)] private float deathFrameRate = 10f;
+        [SerializeField] private Vector2 deathColliderSize = new Vector2(1.65f, 0.38f);
+        [SerializeField] private Vector2 deathColliderOffset = new Vector2(0f, 0.16f);
+        [SerializeField] [Min(0f)] private float deathGroundSink = 0.47f;
+
+        [Header("Belly Bounce")]
+        [SerializeField] private Sprite[] bellyBounceFrames;
+        [SerializeField] [Min(1f)] private float bellyBounceFrameRate = 35f;
+        [SerializeField] [Min(0f)] private float bellyBounceUpSpeed = 12.5f;
+        [SerializeField] [Min(0f)] private float bellyBounceLeftSpeed = 6f;
+        [SerializeField] [Min(0.1f)] private float corpseDragDistance = 2.4f;
+        [SerializeField] [Min(0.05f)] private float bellyBounceKnockbackDuration = 0.2f;
+        [SerializeField] private float bellyZoneMinX = -0.32f;
+        [SerializeField] private float bellyZoneMaxX = 0.22f;
+
         private SpriteRenderer spriteRenderer;
         private Rigidbody2D body;
         private Collider2D bodyCollider;
         private BoxCollider2D boxCollider;
+        private CapsuleCollider2D deathCapsule;
         private EnemyHealth health;
         private ContactFilter2D probeFilter;
         private ContactFilter2D attackOverlapFilter;
@@ -104,11 +124,23 @@ namespace Castlevania2D.Enemies
         private int meleeAttacksThisCycle;
         private int meleeAttacksPlanned = 2;
         private bool isDead;
+        private bool playingDeath;
+        private bool deathColliderApplied;
+        private Vector2 deathStartPosition;
+        private float deathTargetY;
+        private bool bouncingBelly;
+        private bool bellyBounceReversing;
+        private int bellyBounceFrameIndex;
+        private float bellyBounceFrameTimer;
+        private float bellyBounceLockUntil;
+        private Rigidbody2D pendingBellyBounceBody;
+        private bool bellyLaunchPending;
         private bool hitPlayerThisCharge;
         private bool jumpSlamDealt;
         private bool meleeHitDealt;
         private bool ignoredPlayerCollision;
         private Vector2 authoredColliderOffset;
+        private Vector2 authoredColliderSize;
 
         public float AggroRadius => aggroRadius;
 
@@ -122,6 +154,7 @@ namespace Castlevania2D.Enemies
             if (boxCollider != null)
             {
                 authoredColliderOffset = boxCollider.offset;
+                authoredColliderSize = boxCollider.size;
             }
 
             body.bodyType = RigidbodyType2D.Dynamic;
@@ -173,6 +206,16 @@ namespace Castlevania2D.Enemies
         {
             if (isDead)
             {
+                if (playingDeath)
+                {
+                    AdvanceDeath(Time.deltaTime);
+                }
+                else
+                {
+                    AdvanceBellyBounce(Time.deltaTime);
+                    TickCorpseDrag();
+                }
+
                 return;
             }
 
@@ -220,7 +263,6 @@ namespace Castlevania2D.Enemies
         {
             if (isDead)
             {
-                body.linearVelocity = Vector2.zero;
                 return;
             }
 
@@ -356,11 +398,27 @@ namespace Castlevania2D.Enemies
 
         private void OnCollisionEnter2D(Collision2D collision)
         {
+            if (TryBellyBounce(collision))
+            {
+                return;
+            }
+
+            if (isDead)
+            {
+                return;
+            }
+
             TryImpactFromCollider(collision.collider);
         }
 
         private void OnCollisionStay2D(Collision2D collision)
         {
+            if (isDead)
+            {
+                TryBellyBounce(collision);
+                return;
+            }
+
             TryImpactFromCollider(collision.collider);
         }
 
@@ -1238,8 +1296,395 @@ namespace Castlevania2D.Enemies
         private void OnDied()
         {
             isDead = true;
+            playingDeath = deathFrames != null && deathFrames.Length > 0;
+            frameIndex = 0;
+            frameTimer = 0f;
+            body.bodyType = RigidbodyType2D.Kinematic;
             body.linearVelocity = Vector2.zero;
-            enabled = false;
+            deathStartPosition = body.position;
+            deathTargetY = deathStartPosition.y - deathGroundSink;
+            if (TryFindGroundSurfaceY(out float surfaceY))
+            {
+                deathTargetY = surfaceY - deathGroundSink;
+            }
+
+            if (playingDeath)
+            {
+                ApplyAnimationFrame(deathFrames);
+                ApplyDeathDrop(0f);
+                return;
+            }
+
+            FinishDeathPose();
+        }
+
+        private void AdvanceDeath(float deltaTime)
+        {
+            if (!playingDeath)
+            {
+                return;
+            }
+
+            if (deathFrames == null || deathFrames.Length == 0)
+            {
+                FinishDeathPose();
+                return;
+            }
+
+            float frameDuration = 1f / Mathf.Max(1f, deathFrameRate);
+            frameTimer += deltaTime;
+            while (frameTimer >= frameDuration)
+            {
+                frameTimer -= frameDuration;
+                frameIndex++;
+                if (frameIndex >= deathFrames.Length)
+                {
+                    frameIndex = deathFrames.Length - 1;
+                    ApplyAnimationFrame(deathFrames);
+                    FinishDeathPose();
+                    return;
+                }
+
+                ApplyAnimationFrame(deathFrames);
+                float dropT = Mathf.Clamp01(frameIndex / (float)(deathFrames.Length - 1));
+                ApplyDeathDrop(dropT);
+                if (frameIndex >= 4)
+                {
+                    ApplyDeathCollider();
+                }
+            }
+        }
+
+        private void FinishDeathPose()
+        {
+            playingDeath = false;
+            if (deathFrames != null && deathFrames.Length > 0)
+            {
+                frameIndex = deathFrames.Length - 1;
+                ApplyAnimationFrame(deathFrames);
+            }
+
+            ApplyDeathDrop(1f);
+            ApplyDeathCollider();
+            EnablePushableCorpse();
+            body.linearVelocity = Vector2.zero;
+        }
+
+        private bool TryBellyBounce(Collision2D collision)
+        {
+            if (!isDead || playingDeath || collision == null)
+            {
+                return false;
+            }
+
+            if (bellyLaunchPending || Time.time < bellyBounceLockUntil)
+            {
+                return false;
+            }
+
+            CacheTarget();
+            if (!IsTargetCollider(collision.collider))
+            {
+                return false;
+            }
+
+            if (!IsLandingOnBelly(collision))
+            {
+                return false;
+            }
+
+            pendingBellyBounceBody = collision.rigidbody;
+            bellyLaunchPending = true;
+            if (bellyBounceFrames == null || bellyBounceFrames.Length == 0)
+            {
+                LaunchPlayerFromBelly(pendingBellyBounceBody);
+                bellyLaunchPending = false;
+                bellyBounceLockUntil = Time.time + 0.18f;
+                return true;
+            }
+
+            BeginBellyBounceForward();
+            return true;
+        }
+
+        private bool IsLandingOnBelly(Collision2D collision)
+        {
+            Rigidbody2D otherBody = collision.rigidbody;
+            if (otherBody != null && otherBody.linearVelocity.y > 1.5f)
+            {
+                return false;
+            }
+
+            if (bodyCollider == null)
+            {
+                return false;
+            }
+
+            float top = bodyCollider.bounds.max.y;
+            float centerY = bodyCollider.bounds.center.y;
+            bool fromAbove = collision.transform.position.y >= centerY;
+            if (collision.contactCount > 0)
+            {
+                fromAbove = false;
+                for (int i = 0; i < collision.contactCount; i++)
+                {
+                    ContactPoint2D contact = collision.GetContact(i);
+                    if (contact.point.y >= centerY && contact.point.y >= top - 0.55f)
+                    {
+                        fromAbove = true;
+                        if (IsInBellyZone(contact.point))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return fromAbove && IsInBellyZone(collision.transform.position);
+        }
+
+        private bool IsInBellyZone(Vector3 worldPoint)
+        {
+            float localX = transform.InverseTransformPoint(worldPoint).x;
+            if (spriteRenderer != null && spriteRenderer.flipX)
+            {
+                localX = -localX;
+            }
+
+            return localX >= bellyZoneMinX && localX <= bellyZoneMaxX;
+        }
+
+        private void LaunchPlayerFromBelly(Rigidbody2D playerBody)
+        {
+            Transform playerRoot = playerBody != null
+                ? playerBody.transform
+                : target;
+            if (playerRoot == null)
+            {
+                return;
+            }
+
+            Vector2 launch = new Vector2(-bellyBounceLeftSpeed, bellyBounceUpSpeed);
+            IForcedJump forcedJump = playerRoot.GetComponent<IForcedJump>();
+            if (forcedJump == null)
+            {
+                forcedJump = playerRoot.GetComponentInParent<IForcedJump>();
+            }
+
+            float multiplier = 7.5f > 0.01f ? bellyBounceUpSpeed / 7.5f : 1.45f;
+            forcedJump?.ForceJump(multiplier);
+
+            CombatKnockbackReceiver2D knockback =
+                playerRoot.GetComponent<CombatKnockbackReceiver2D>();
+            if (knockback == null)
+            {
+                knockback = playerRoot.GetComponentInParent<CombatKnockbackReceiver2D>();
+            }
+
+            if (knockback != null)
+            {
+                knockback.ApplyKnockback(launch, bellyBounceKnockbackDuration);
+            }
+            else if (playerBody != null)
+            {
+                playerBody.linearVelocity = launch;
+            }
+        }
+
+        private void BeginBellyBounceForward()
+        {
+            if (bellyBounceFrames == null || bellyBounceFrames.Length == 0)
+            {
+                return;
+            }
+
+            bouncingBelly = true;
+            bellyBounceReversing = false;
+            bellyBounceFrameIndex = 0;
+            bellyBounceFrameTimer = 0f;
+            ApplyAnimationFrameAt(bellyBounceFrames, 0);
+        }
+
+        private void AdvanceBellyBounce(float deltaTime)
+        {
+            if (!bouncingBelly || bellyBounceFrames == null || bellyBounceFrames.Length == 0)
+            {
+                return;
+            }
+
+            float frameDuration = 1f / Mathf.Max(1f, bellyBounceFrameRate);
+            bellyBounceFrameTimer += deltaTime;
+            while (bellyBounceFrameTimer >= frameDuration)
+            {
+                bellyBounceFrameTimer -= frameDuration;
+                if (!bellyBounceReversing)
+                {
+                    bellyBounceFrameIndex++;
+                    if (bellyBounceFrameIndex >= bellyBounceFrames.Length)
+                    {
+                        bellyBounceFrameIndex = bellyBounceFrames.Length - 1;
+                        ApplyAnimationFrameAt(bellyBounceFrames, bellyBounceFrameIndex);
+                        if (bellyLaunchPending)
+                        {
+                            LaunchPlayerFromBelly(pendingBellyBounceBody);
+                            bellyLaunchPending = false;
+                        }
+
+                        bellyBounceReversing = true;
+                        continue;
+                    }
+                }
+                else
+                {
+                    bellyBounceFrameIndex--;
+                    if (bellyBounceFrameIndex <= 0)
+                    {
+                        bellyBounceFrameIndex = 0;
+                        bouncingBelly = false;
+                        bellyBounceReversing = false;
+                        pendingBellyBounceBody = null;
+                        bellyLaunchPending = false;
+                        bellyBounceLockUntil = Time.time + 0.12f;
+                        ApplyAnimationFrameAt(bellyBounceFrames, 0);
+                        return;
+                    }
+                }
+
+                ApplyAnimationFrameAt(bellyBounceFrames, bellyBounceFrameIndex);
+            }
+        }
+
+        private void ApplyAnimationFrameAt(Sprite[] frames, int index)
+        {
+            if (spriteRenderer == null || frames == null || frames.Length == 0)
+            {
+                return;
+            }
+
+            Sprite frame = frames[Mathf.Clamp(index, 0, frames.Length - 1)];
+            if (frame != null)
+            {
+                spriteRenderer.sprite = frame;
+            }
+        }
+
+        private void ApplyDeathDrop(float normalized)
+        {
+            float y = Mathf.Lerp(deathStartPosition.y, deathTargetY, Mathf.Clamp01(normalized));
+            body.position = new Vector2(body.position.x, y);
+        }
+
+        private void ApplyDeathCollider()
+        {
+            if (deathColliderApplied)
+            {
+                return;
+            }
+
+            RestorePlayerBodyCollision();
+            if (boxCollider != null)
+            {
+                boxCollider.enabled = false;
+            }
+
+            if (deathCapsule == null)
+            {
+                deathCapsule = GetComponent<CapsuleCollider2D>();
+                if (deathCapsule == null)
+                {
+                    deathCapsule = gameObject.AddComponent<CapsuleCollider2D>();
+                }
+            }
+
+            float standingHeight = authoredColliderSize.y > 0.01f
+                ? authoredColliderSize.y
+                : (boxCollider != null ? boxCollider.size.y : 2.1f);
+            float thickness = Mathf.Max(0.12f, deathColliderSize.y);
+            float length = Mathf.Max(standingHeight, deathColliderSize.x);
+
+            deathCapsule.direction = CapsuleDirection2D.Horizontal;
+            deathCapsule.size = new Vector2(length, thickness);
+            deathCapsule.offset = new Vector2(deathColliderOffset.x, thickness * 0.5f * 0.3f);
+            deathCapsule.isTrigger = false;
+            deathCapsule.enabled = true;
+            bodyCollider = deathCapsule;
+            deathColliderApplied = true;
+        }
+
+        private bool draggingCorpse;
+        private float corpseDragOffsetX;
+
+        private void EnablePushableCorpse()
+        {
+            if (body == null)
+            {
+                return;
+            }
+
+            body.bodyType = RigidbodyType2D.Kinematic;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation;
+            body.linearVelocity = Vector2.zero;
+            draggingCorpse = false;
+        }
+
+        private void TickCorpseDrag()
+        {
+            CacheTarget();
+            if (target == null || body == null || GameplayInputLock.IsLocked)
+            {
+                draggingCorpse = false;
+                return;
+            }
+
+            bool holdGrab = UnityEngine.Input.GetKey(KeyCode.F);
+            float dx = target.position.x - transform.position.x;
+            float dy = target.position.y - transform.position.y;
+            bool inRange = (dx * dx) + (dy * dy) <= corpseDragDistance * corpseDragDistance;
+            if (!holdGrab || !inRange)
+            {
+                draggingCorpse = false;
+                return;
+            }
+
+            if (!draggingCorpse)
+            {
+                draggingCorpse = true;
+                corpseDragOffsetX = transform.position.x - target.position.x;
+            }
+
+            body.position = new Vector2(target.position.x + corpseDragOffsetX, body.position.y);
+        }
+
+        private void RestorePlayerBodyCollision()
+        {
+            if (!ignoredPlayerCollision || bodyCollider == null)
+            {
+                return;
+            }
+
+            if (target == null)
+            {
+                CacheTarget();
+            }
+
+            if (target == null)
+            {
+                return;
+            }
+
+            Collider2D[] playerColliders = target.GetComponentsInChildren<Collider2D>();
+            for (int i = 0; i < playerColliders.Length; i++)
+            {
+                Collider2D playerCollider = playerColliders[i];
+                if (playerCollider == null || playerCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(bodyCollider, playerCollider, false);
+            }
+
+            ignoredPlayerCollision = false;
         }
 
 #if UNITY_EDITOR
@@ -1267,6 +1712,16 @@ namespace Castlevania2D.Enemies
         public void EditorAssignMeleeFrames(Sprite[] melee)
         {
             meleeFrames = melee ?? System.Array.Empty<Sprite>();
+        }
+
+        public void EditorAssignDeathFrames(Sprite[] death)
+        {
+            deathFrames = death ?? System.Array.Empty<Sprite>();
+        }
+
+        public void EditorAssignBellyBounceFrames(Sprite[] bounce)
+        {
+            bellyBounceFrames = bounce ?? System.Array.Empty<Sprite>();
         }
 
         private void OnDrawGizmosSelected()
