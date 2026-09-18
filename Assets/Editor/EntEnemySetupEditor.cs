@@ -47,7 +47,7 @@ public static class EntEnemySetupEditor
     private const float HurtFlashScaleMultiplier = 1f;
     private const float HurtFlashYOffset = 0f;
     /// <summary>720×1280 @ PPU 100 → ~1.15×2.05 world units at 0.16.</summary>
-    private const float VisualScale = 0.16f;
+    private const float VisualScale = 0.19008f;
     /// <summary>Walk/attack canvases leave ~100px empty below opaque feet (PPU 100).</summary>
     private const float PhysicsFeetPaddingLocal = 1f;
     /// <summary>Keep 0 — padding already matches opaque feet; extra sink puts sprite under tiles.</summary>

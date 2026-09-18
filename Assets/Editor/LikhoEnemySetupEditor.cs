@@ -21,7 +21,7 @@ public static class LikhoEnemySetupEditor
     private const int MaxHealth = 8;
     private const float SleepFrameRate = 8f;
     private const float ActionFrameRate = 12f;
-    private const float VisualScale = 1f;
+    private const float VisualScale = 1.188f;
     private static readonly Vector3 ScenePosition = new Vector3(8.6f, -65.7f, 0f);
     private static readonly Vector2 AggroArea = new Vector2(6f, 3.5f);
 

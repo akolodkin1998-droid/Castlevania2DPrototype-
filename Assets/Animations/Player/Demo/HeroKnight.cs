@@ -15,10 +15,18 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     [SerializeField] float      m_attackHitboxActiveTime = 0.18f;
     [SerializeField] Hitbox2D   m_attackHitbox;
     [SerializeField] int        m_maxBlockedAttacks = 7;
+    [SerializeField] private BoxCollider2D m_attackBox;
+    [SerializeField] private Vector2 m_attackBoxSize = new Vector2(0.8f, 1.8f);
+    [SerializeField] private Vector2 m_attackBoxOffset;
+    [SerializeField] private Vector2 m_slideBodySize = new Vector2(1.8f, 0.8f);
+    [SerializeField] private Vector2 m_slideBodyOffset = new Vector2(0f, 0.4f);
+    [SerializeField] private Vector2 m_slideAttackBoxSize = new Vector2(1.8f, 0.8f);
+    [SerializeField] private Vector2 m_slideAttackBoxOffset = new Vector2(0f, 0.4f);
 
     private Animator            m_animator;
     private Rigidbody2D         m_body2d;
     private SpriteRenderer      m_spriteRenderer;
+    private CapsuleCollider2D   m_bodyCollider;
     private PlayerHealth        m_health;
     private CombatKnockbackReceiver2D m_knockbackReceiver;
     private Sensor_HeroKnight   m_groundSensor;
@@ -29,17 +37,30 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     private bool                m_isWallSliding = false;
     private bool                m_grounded = false;
     private bool                m_rolling = false;
+    private bool                m_rollEntered;
+    private bool                m_slideCollidersActive;
+    private bool                m_standingCollidersCached;
+    private Vector2             m_standingCapsuleSize;
+    private Vector2             m_standingCapsuleOffset;
+    private CapsuleDirection2D  m_standingCapsuleDirection;
+    private Vector2             m_standingAttackSize;
+    private Vector2             m_standingAttackOffset;
+    private Vector3             m_standingWallSensorR2;
+    private Vector3             m_standingWallSensorL2;
     private int                 m_facingDirection = 1;
     private int                 m_currentAttack = 0;
     private float               m_timeSinceAttack = 0.0f;
     private float               m_delayToIdle = 0.0f;
-    private float               m_rollDuration = 8.0f / 14.0f;
-    private float               m_rollCurrentTime;
     private float               m_attackHitboxTimer;
     private bool                m_dead;
     private bool                m_blocking;
     private bool                m_overheadBlockHeld;
     private int                 m_blockedAttacksRemaining;
+    private static readonly int RunStartState = Animator.StringToHash("RunStart");
+    private static readonly int RollState = Animator.StringToHash("Roll");
+    private static readonly int RollSlideState = Animator.StringToHash("Roll Slide");
+    private static readonly int RollSlideLoopState = Animator.StringToHash("Roll Slide Loop");
+    private const int SlideLoopMaxCycles = 5;
 
     public bool IsGrounded => m_grounded;
     public int FacingDirection => m_facingDirection;
@@ -66,12 +87,37 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         m_animator = GetComponent<Animator>();
         m_body2d = GetComponent<Rigidbody2D>();
         m_spriteRenderer = GetComponent<SpriteRenderer>();
+        m_bodyCollider = GetComponent<CapsuleCollider2D>();
         m_health = GetComponent<PlayerHealth>();
         m_knockbackReceiver = GetComponent<CombatKnockbackReceiver2D>();
         if (m_knockbackReceiver == null)
         {
             m_knockbackReceiver = gameObject.AddComponent<CombatKnockbackReceiver2D>();
         }
+
+        ApplyAttackBox();
+    }
+
+    private void OnValidate()
+    {
+        ApplyAttackBox();
+    }
+
+    private void ApplyAttackBox()
+    {
+        if (m_attackBox == null && m_attackHitbox != null)
+        {
+            m_attackBox = m_attackHitbox.GetComponent<BoxCollider2D>();
+        }
+
+        if (m_attackBox == null || m_slideCollidersActive)
+        {
+            return;
+        }
+
+        m_attackBox.size = m_attackBoxSize;
+        m_attackBox.offset = m_attackBoxOffset;
+        m_attackBox.isTrigger = true;
     }
 
     void Start ()
@@ -101,6 +147,8 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_attackHitbox.Configure(gameObject, m_facingDirection, m_attackDamage);
             m_attackHitbox.EndSwing();
         }
+
+        CacheStandingColliders();
     }
 
     private void OnEnable()
@@ -140,14 +188,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         // Increase timer that controls attack combo
         m_timeSinceAttack += Time.deltaTime;
         TickAttackHitbox();
-
-        // Increase timer that checks roll duration
-        if(m_rolling)
-            m_rollCurrentTime += Time.deltaTime;
-
-        // Disable rolling if timer extends duration
-        if(m_rollCurrentTime > m_rollDuration)
-            m_rolling = false;
+        TickRoll();
 
         //Check if character just landed on the ground
         if (!m_grounded && m_groundSensor.State())
@@ -168,21 +209,29 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         bool isOverheadBlocking = m_overheadBlockHeld;
 
         // Swap direction of sprite depending on walk direction
-        if (inputX > 0)
+        if (!m_rolling)
         {
-            m_spriteRenderer.flipX = false;
-            m_facingDirection = 1;
-        }
-        else if (inputX < 0)
-        {
-            m_spriteRenderer.flipX = true;
-            m_facingDirection = -1;
+            if (inputX > 0)
+            {
+                m_spriteRenderer.flipX = false;
+                m_facingDirection = 1;
+            }
+            else if (inputX < 0)
+            {
+                m_spriteRenderer.flipX = true;
+                m_facingDirection = -1;
+            }
         }
 
-        // Strong enemy launches temporarily override walk input.
+        // Strong enemy launches (Likho kick / Giant Likho) override walk and roll.
         if (m_knockbackReceiver != null
             && m_knockbackReceiver.TryGetKnockbackVelocity(out Vector2 knockbackVelocity))
         {
+            if (m_rolling)
+            {
+                EndRoll();
+            }
+
             Vector2 launched = m_body2d.linearVelocity;
             launched.x = knockbackVelocity.x;
             if (Mathf.Abs(knockbackVelocity.y) > 0.01f)
@@ -195,7 +244,8 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         // Move (overhead block allows horizontal walk; uses IdleBlockWalk clip)
         else if (!m_rolling)
         {
-            m_body2d.linearVelocity = new Vector2(inputX * m_speed, m_body2d.linearVelocity.y);
+            float walkSpeed = IsWalkStartupLocked() ? 0f : inputX * m_speed;
+            m_body2d.linearVelocity = new Vector2(walkSpeed, m_body2d.linearVelocity.y);
         }
 
         //Set AirSpeed in animator
@@ -254,12 +304,10 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         {
             EndBlock();
         }
-        // Roll
-        else if (Input.GetKeyDown("left shift") && !m_rolling && !m_isWallSliding && !isOverheadBlocking)
+        // Roll / belly slide. Hold Left Shift to keep sliding on frames 9-10.
+        else if (Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_isWallSliding && !isOverheadBlocking)
         {
-            m_rolling = true;
-            m_animator.SetTrigger("Roll");
-            m_body2d.linearVelocity = new Vector2(m_facingDirection * m_rollForce, m_body2d.linearVelocity.y);
+            BeginRoll();
         }
         //Jump
         else if (Input.GetKeyDown("space") && m_grounded && !m_rolling && !isOverheadBlocking)
@@ -269,6 +317,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
         // IdleBlock selects Idle Block / Idle Block Walk; false keeps normal Idle / Run.
         m_animator.SetBool("IdleBlock", m_overheadBlockHeld);
+        m_animator.SetBool("FrontBlock", m_blocking && !m_overheadBlockHeld);
 
         // Run / overhead-block walk (AnimState 1). Always update (not gated by attack/block edges).
         if (Mathf.Abs(inputX) > Mathf.Epsilon)
@@ -326,6 +375,223 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         }
     }
 
+    private bool IsWalkStartupLocked()
+    {
+        return m_animator != null
+            && m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash == RunStartState;
+    }
+
+    private void BeginRoll()
+    {
+        m_rolling = true;
+        m_rollEntered = false;
+        m_animator.ResetTrigger("Roll");
+        m_animator.SetTrigger("Roll");
+        m_animator.SetBool("RollHeld", true);
+        m_body2d.linearVelocity = new Vector2(m_facingDirection * m_rollForce, m_body2d.linearVelocity.y);
+    }
+
+    private void TickRoll()
+    {
+        if (!m_rolling)
+        {
+            SetSlideColliders(false);
+            return;
+        }
+
+        if (m_knockbackReceiver != null && m_knockbackReceiver.IsActive)
+        {
+            EndRoll();
+            return;
+        }
+
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift) && !HasFinishedSlideLoopLimit();
+        m_animator.SetBool("RollHeld", shiftHeld);
+
+        bool inRollMove = IsInRollMove();
+        if (inRollMove)
+        {
+            m_rollEntered = true;
+        }
+        else if (m_rollEntered)
+        {
+            EndRoll();
+            return;
+        }
+
+        m_body2d.linearVelocity = new Vector2(m_facingDirection * m_rollForce, m_body2d.linearVelocity.y);
+        SetSlideColliders(IsInSlideMove());
+    }
+
+    private void EndRoll()
+    {
+        m_rolling = false;
+        m_rollEntered = false;
+
+        if (m_animator != null)
+        {
+            m_animator.SetBool("RollHeld", false);
+        }
+
+        SetSlideColliders(false);
+    }
+
+    private bool IsInRollMove()
+    {
+        if (m_animator == null)
+        {
+            return false;
+        }
+
+        int current = m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+        if (IsRollStateHash(current))
+        {
+            return true;
+        }
+
+        return m_animator.IsInTransition(0)
+            && IsRollStateHash(m_animator.GetNextAnimatorStateInfo(0).shortNameHash);
+    }
+
+    private bool HasFinishedSlideLoopLimit()
+    {
+        if (m_animator == null)
+        {
+            return false;
+        }
+
+        AnimatorStateInfo current = m_animator.GetCurrentAnimatorStateInfo(0);
+        return current.shortNameHash == RollSlideLoopState
+            && current.normalizedTime >= SlideLoopMaxCycles;
+    }
+
+    private bool IsInSlideMove()
+    {
+        if (m_animator == null)
+        {
+            return false;
+        }
+
+        int current = m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+        if (current == RollSlideState || current == RollSlideLoopState)
+        {
+            return true;
+        }
+
+        return m_animator.IsInTransition(0)
+            && (m_animator.GetNextAnimatorStateInfo(0).shortNameHash == RollSlideState
+                || m_animator.GetNextAnimatorStateInfo(0).shortNameHash == RollSlideLoopState);
+    }
+
+    private static bool IsRollStateHash(int hash)
+    {
+        return hash == RollState || hash == RollSlideState || hash == RollSlideLoopState;
+    }
+
+    private void CacheStandingColliders()
+    {
+        if (m_standingCollidersCached)
+        {
+            return;
+        }
+
+        if (m_bodyCollider == null)
+        {
+            m_bodyCollider = GetComponent<CapsuleCollider2D>();
+        }
+
+        if (m_bodyCollider != null)
+        {
+            m_standingCapsuleSize = m_bodyCollider.size;
+            m_standingCapsuleOffset = m_bodyCollider.offset;
+            m_standingCapsuleDirection = m_bodyCollider.direction;
+        }
+
+        if (m_attackBox != null)
+        {
+            m_standingAttackSize = m_attackBox.size;
+            m_standingAttackOffset = m_attackBox.offset;
+        }
+        else
+        {
+            m_standingAttackSize = m_attackBoxSize;
+            m_standingAttackOffset = m_attackBoxOffset;
+        }
+
+        if (m_wallSensorR2 != null)
+        {
+            m_standingWallSensorR2 = m_wallSensorR2.transform.localPosition;
+        }
+
+        if (m_wallSensorL2 != null)
+        {
+            m_standingWallSensorL2 = m_wallSensorL2.transform.localPosition;
+        }
+
+        m_standingCollidersCached = true;
+    }
+
+    private void SetSlideColliders(bool sliding)
+    {
+        if (sliding == m_slideCollidersActive)
+        {
+            return;
+        }
+
+        CacheStandingColliders();
+        m_slideCollidersActive = sliding;
+
+        if (m_bodyCollider != null)
+        {
+            if (sliding)
+            {
+                float standingBottom = m_standingCapsuleOffset.y - m_standingCapsuleSize.y * 0.5f;
+                m_bodyCollider.direction = CapsuleDirection2D.Horizontal;
+                m_bodyCollider.size = m_slideBodySize;
+                m_bodyCollider.offset = new Vector2(
+                    m_slideBodyOffset.x,
+                    standingBottom + m_slideBodySize.y * 0.5f);
+            }
+            else
+            {
+                m_bodyCollider.direction = m_standingCapsuleDirection;
+                m_bodyCollider.size = m_standingCapsuleSize;
+                m_bodyCollider.offset = m_standingCapsuleOffset;
+            }
+        }
+
+        if (m_attackBox != null)
+        {
+            if (sliding)
+            {
+                m_attackBox.size = m_slideAttackBoxSize;
+                m_attackBox.offset = m_slideAttackBoxOffset;
+            }
+            else
+            {
+                m_attackBox.size = m_standingAttackSize;
+                m_attackBox.offset = m_standingAttackOffset;
+            }
+        }
+
+        float sensorY = sliding ? m_slideBodyOffset.y : 0f;
+        if (m_wallSensorR2 != null)
+        {
+            Vector3 position = sliding
+                ? new Vector3(m_standingWallSensorR2.x, sensorY, m_standingWallSensorR2.z)
+                : m_standingWallSensorR2;
+            m_wallSensorR2.transform.localPosition = position;
+        }
+
+        if (m_wallSensorL2 != null)
+        {
+            Vector3 position = sliding
+                ? new Vector3(m_standingWallSensorL2.x, sensorY, m_standingWallSensorL2.z)
+                : m_standingWallSensorL2;
+            m_wallSensorL2.transform.localPosition = position;
+        }
+    }
+
     private void BeginAttackHitbox()
     {
         if (m_attackHitbox == null)
@@ -365,7 +631,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
     private void OnDamaged(DamageInfo damage)
     {
-        if (m_dead)
+        if (m_dead || m_rolling)
         {
             return;
         }
@@ -385,6 +651,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     {
         m_dead = true;
         EndBlock();
+        EndRoll();
         StopAttackHitbox();
 
         if (m_body2d == null)
@@ -445,6 +712,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         if (m_animator != null)
         {
             m_animator.SetBool("IdleBlock", false);
+            m_animator.SetBool("FrontBlock", false);
         }
     }
 }

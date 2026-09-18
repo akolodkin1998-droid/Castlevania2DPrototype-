@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1.35, y: 1.35, z: 1}
+  m_LocalScale: {x: 1.6038, y: 1.6038, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -316,6 +316,10 @@ MonoBehaviour:
   deathColliderSize: {x: 1.65, y: 0.38}
   deathColliderOffset: {x: 0, y: 0.16}
   deathGroundSink: 0.47
+  sleepFrames:
+  - {fileID: 21300000, guid: 6c4909d869d540adb494d2e1457960c9, type: 3}
+  - {fileID: 21300000, guid: 67f435f319c442c1a82312ef45fc03b5, type: 3}
+  sleepFrameRate: 4
   bellyBounceFrames:
   - {fileID: 21300000, guid: bd64e8a28c944b43af04b1adb99e8d7a, type: 3}
   - {fileID: 21300000, guid: 5d37ec51f7774d388b637bc9a09b1ba7, type: 3}
@@ -330,6 +334,7 @@ MonoBehaviour:
   bellyBounceUpSpeed: 12.5
   bellyBounceLeftSpeed: 6
   corpseDragDistance: 2.4
+  corpsePushSpeed: 4
   bellyBounceKnockbackDuration: 0.2
   bellyZoneMinX: -0.32
   bellyZoneMaxX: 0.22

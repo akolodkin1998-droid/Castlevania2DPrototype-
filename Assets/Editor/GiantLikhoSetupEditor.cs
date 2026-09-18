@@ -47,12 +47,16 @@ public static class GiantLikhoSetupEditor
         @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\Прыжокна пузо";
     private const string BellyBounceDestinationFolder =
         "Assets/Art/Sprites/Characters/Enemies/GiantLikho/BellyBounce";
+    private const string SleepSourceFolder =
+        @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Огромное Лихо\Сон";
+    private const string SleepDestinationFolder =
+        "Assets/Art/Sprites/Characters/Enemies/GiantLikho/Sleep";
     private const string PrefabPath = "Assets/Prefabs/Enemies/Enemy_GiantLikho.prefab";
     private const string ScenePath = "Assets/Scenes/Prototype.unity";
     private const string ObjectName = "ОгромноеЛихо";
     private const int FrameCount = 15;
     private const int MaxHealth = 200;
-    private const float VisualScale = 1.35f;
+    private const float VisualScale = 1.6038f;
     private static readonly Vector3 ScenePosition = new Vector3(14.5f, -65.7f, 0f);
 
     [MenuItem("Tools/Castlevania 2D/Assign Giant Likho Attack 3")]
@@ -149,6 +153,50 @@ public static class GiantLikhoSetupEditor
 
         AssetDatabase.SaveAssets();
         return $"Giant Likho death assigned: {deathFrames.Length} frames. Corpse stays after the clip.";
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Assign Giant Likho Sleep")]
+    public static void AssignSleepFromMenu()
+    {
+        try
+        {
+            Debug.Log(AssignSleepToExistingPrefab());
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+    }
+
+    public static string AssignSleepToExistingPrefab()
+    {
+        EnsureFolder(SleepDestinationFolder);
+        Sprite[] sleepFrames = ImportNumberedFrames(
+            SleepSourceFolder,
+            SleepDestinationFolder,
+            "GiantLikho_Sleep_",
+            expectedFrameCount: 2);
+
+        GameObject contents = PrefabUtility.LoadPrefabContents(PrefabPath);
+        try
+        {
+            GiantLikhoEnemy2D controller = contents.GetComponent<GiantLikhoEnemy2D>();
+            if (controller == null)
+            {
+                throw new InvalidOperationException(
+                    "Enemy_GiantLikho prefab has no GiantLikhoEnemy2D.");
+            }
+
+            controller.EditorAssignSleepFrames(sleepFrames);
+            PrefabUtility.SaveAsPrefabAsset(contents, PrefabPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(contents);
+        }
+
+        AssetDatabase.SaveAssets();
+        return $"Giant Likho sleep assigned: {sleepFrames.Length} frames, ping-pong after death.";
     }
 
     [MenuItem("Tools/Castlevania 2D/Assign Giant Likho Belly Bounce")]

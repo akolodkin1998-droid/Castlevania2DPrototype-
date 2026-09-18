@@ -22,7 +22,7 @@ public static class SnakeEnemySetupEditor
     private const int AttackFrameMax = 21;
     private const int SnakeMaxHealth = 1;
     /// <summary>HD Photoroom frames are ~1920x1080; 0.35/3 ≈ arena-readable small size.</summary>
-    private const float VisualScale = 0.11666667f;
+    private const float VisualScale = 0.1386f;
 
     [MenuItem("Tools/Castlevania 2D/Setup Snake Enemy")]
     public static void SetupSnakeEnemyMenu()

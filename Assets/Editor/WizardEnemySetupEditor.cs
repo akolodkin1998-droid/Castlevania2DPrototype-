@@ -33,7 +33,7 @@ public static class WizardEnemySetupEditor
     private const int WizardMaxHealth = 10000;
     private const float FrameRate = 12f;
     /// <summary>Was 0.65; +20% → 0.78.</summary>
-    private const float VisualScale = 0.78f;
+    private const float VisualScale = 0.92664f;
     private const float SightRange = 18f;
     private const bool UseWorldXActivationGate = true;
     private const float ActivationMinTargetWorldX = 64f;

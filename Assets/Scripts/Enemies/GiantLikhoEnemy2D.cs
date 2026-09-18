@@ -93,12 +93,17 @@ namespace Castlevania2D.Enemies
         [SerializeField] private Vector2 deathColliderOffset = new Vector2(0f, 0.16f);
         [SerializeField] [Min(0f)] private float deathGroundSink = 0.47f;
 
+        [Header("Sleep")]
+        [SerializeField] private Sprite[] sleepFrames;
+        [SerializeField] [Min(1f)] private float sleepFrameRate = 4f;
+
         [Header("Belly Bounce")]
         [SerializeField] private Sprite[] bellyBounceFrames;
         [SerializeField] [Min(1f)] private float bellyBounceFrameRate = 35f;
         [SerializeField] [Min(0f)] private float bellyBounceUpSpeed = 12.5f;
         [SerializeField] [Min(0f)] private float bellyBounceLeftSpeed = 6f;
         [SerializeField] [Min(0.1f)] private float corpseDragDistance = 2.4f;
+        [SerializeField] [Min(0f)] private float corpsePushSpeed = 4f;
         [SerializeField] [Min(0.05f)] private float bellyBounceKnockbackDuration = 0.2f;
         [SerializeField] private float bellyZoneMinX = -0.32f;
         [SerializeField] private float bellyZoneMaxX = 0.22f;
@@ -135,6 +140,10 @@ namespace Castlevania2D.Enemies
         private float bellyBounceLockUntil;
         private Rigidbody2D pendingBellyBounceBody;
         private bool bellyLaunchPending;
+        private bool sleepingPingPong;
+        private bool sleepReversing;
+        private int sleepFrameIndex;
+        private float sleepFrameTimer;
         private bool hitPlayerThisCharge;
         private bool jumpSlamDealt;
         private bool meleeHitDealt;
@@ -213,6 +222,11 @@ namespace Castlevania2D.Enemies
                 else
                 {
                     AdvanceBellyBounce(Time.deltaTime);
+                    if (!bouncingBelly)
+                    {
+                        AdvanceSleep(Time.deltaTime);
+                    }
+
                     TickCorpseDrag();
                 }
 
@@ -1368,6 +1382,7 @@ namespace Castlevania2D.Enemies
             ApplyDeathCollider();
             EnablePushableCorpse();
             body.linearVelocity = Vector2.zero;
+            BeginSleepPingPong();
         }
 
         private bool TryBellyBounce(Collision2D collision)
@@ -1498,6 +1513,7 @@ namespace Castlevania2D.Enemies
                 return;
             }
 
+            sleepingPingPong = false;
             bouncingBelly = true;
             bellyBounceReversing = false;
             bellyBounceFrameIndex = 0;
@@ -1545,12 +1561,79 @@ namespace Castlevania2D.Enemies
                         pendingBellyBounceBody = null;
                         bellyLaunchPending = false;
                         bellyBounceLockUntil = Time.time + 0.12f;
-                        ApplyAnimationFrameAt(bellyBounceFrames, 0);
+                        if (!BeginSleepPingPong())
+                        {
+                            ApplyAnimationFrameAt(bellyBounceFrames, 0);
+                        }
+
                         return;
                     }
                 }
 
                 ApplyAnimationFrameAt(bellyBounceFrames, bellyBounceFrameIndex);
+            }
+        }
+
+        private bool BeginSleepPingPong()
+        {
+            if (sleepFrames == null || sleepFrames.Length == 0)
+            {
+                sleepingPingPong = false;
+                return false;
+            }
+
+            sleepingPingPong = true;
+            sleepReversing = false;
+            sleepFrameIndex = 0;
+            sleepFrameTimer = 0f;
+            ApplyAnimationFrameAt(sleepFrames, 0);
+            return true;
+        }
+
+        private void AdvanceSleep(float deltaTime)
+        {
+            if (!sleepingPingPong || bouncingBelly || playingDeath)
+            {
+                return;
+            }
+
+            if (sleepFrames == null || sleepFrames.Length == 0)
+            {
+                sleepingPingPong = false;
+                return;
+            }
+
+            if (sleepFrames.Length == 1)
+            {
+                ApplyAnimationFrameAt(sleepFrames, 0);
+                return;
+            }
+
+            float frameDuration = 1f / Mathf.Max(1f, sleepFrameRate);
+            sleepFrameTimer += deltaTime;
+            while (sleepFrameTimer >= frameDuration)
+            {
+                sleepFrameTimer -= frameDuration;
+                if (!sleepReversing)
+                {
+                    sleepFrameIndex++;
+                    if (sleepFrameIndex >= sleepFrames.Length)
+                    {
+                        sleepFrameIndex = sleepFrames.Length - 1;
+                        sleepReversing = true;
+                    }
+                }
+                else
+                {
+                    sleepFrameIndex--;
+                    if (sleepFrameIndex <= 0)
+                    {
+                        sleepFrameIndex = 0;
+                        sleepReversing = false;
+                    }
+                }
+
+                ApplyAnimationFrameAt(sleepFrames, sleepFrameIndex);
             }
         }
 
@@ -1612,6 +1695,7 @@ namespace Castlevania2D.Enemies
         }
 
         private bool draggingCorpse;
+        private bool ignoringCorpseDragCollision;
         private float corpseDragOffsetX;
 
         private void EnablePushableCorpse()
@@ -1625,6 +1709,7 @@ namespace Castlevania2D.Enemies
             body.constraints = RigidbodyConstraints2D.FreezeRotation;
             body.linearVelocity = Vector2.zero;
             draggingCorpse = false;
+            SetCorpseDragCollisionIgnored(false);
         }
 
         private void TickCorpseDrag()
@@ -1632,7 +1717,7 @@ namespace Castlevania2D.Enemies
             CacheTarget();
             if (target == null || body == null || GameplayInputLock.IsLocked)
             {
-                draggingCorpse = false;
+                StopCorpseDrag();
                 return;
             }
 
@@ -1642,6 +1727,28 @@ namespace Castlevania2D.Enemies
             bool inRange = (dx * dx) + (dy * dy) <= corpseDragDistance * corpseDragDistance;
             if (!holdGrab || !inRange)
             {
+                StopCorpseDrag();
+                return;
+            }
+
+            float inputX = UnityEngine.Input.GetAxisRaw("Horizontal");
+            float corpseRelX = body.position.x - target.position.x;
+            if (Mathf.Abs(corpseRelX) < 0.05f)
+            {
+                corpseRelX = spriteRenderer != null && spriteRenderer.flipX ? -1f : 1f;
+            }
+
+            bool towardCorpse = Mathf.Abs(inputX) > 0.01f && inputX * corpseRelX > 0f;
+            if (towardCorpse)
+            {
+                draggingCorpse = false;
+                TryPushCorpseForward(inputX, Mathf.Abs(corpseRelX));
+                return;
+            }
+
+            SetCorpseDragCollisionIgnored(false);
+            if (Mathf.Abs(inputX) <= 0.01f)
+            {
                 draggingCorpse = false;
                 return;
             }
@@ -1649,10 +1756,77 @@ namespace Castlevania2D.Enemies
             if (!draggingCorpse)
             {
                 draggingCorpse = true;
-                corpseDragOffsetX = transform.position.x - target.position.x;
+                corpseDragOffsetX = body.position.x - target.position.x;
             }
 
             body.position = new Vector2(target.position.x + corpseDragOffsetX, body.position.y);
+        }
+
+        private void TryPushCorpseForward(float inputX, float distanceToPlayer)
+        {
+            if (distanceToPlayer > ResolveCorpseContactDistance())
+            {
+                SetCorpseDragCollisionIgnored(false);
+                return;
+            }
+
+            SetCorpseDragCollisionIgnored(true);
+            float pushSpeed = corpsePushSpeed;
+            Rigidbody2D playerBody = target.GetComponent<Rigidbody2D>();
+            if (playerBody != null && Mathf.Abs(playerBody.linearVelocity.x) > pushSpeed)
+            {
+                pushSpeed = Mathf.Abs(playerBody.linearVelocity.x);
+            }
+
+            body.position = new Vector2(
+                body.position.x + inputX * pushSpeed * Time.deltaTime,
+                body.position.y);
+        }
+
+        private float ResolveCorpseContactDistance()
+        {
+            float corpseHalf = bodyCollider != null ? bodyCollider.bounds.extents.x : 1f;
+            float playerHalf = 0.35f;
+            Collider2D playerCollider = target.GetComponent<Collider2D>();
+            if (playerCollider == null)
+            {
+                playerCollider = target.GetComponentInChildren<Collider2D>();
+            }
+
+            if (playerCollider != null)
+            {
+                playerHalf = playerCollider.bounds.extents.x;
+            }
+
+            return corpseHalf + playerHalf + 0.2f;
+        }
+
+        private void StopCorpseDrag()
+        {
+            draggingCorpse = false;
+            SetCorpseDragCollisionIgnored(false);
+        }
+
+        private void SetCorpseDragCollisionIgnored(bool ignore)
+        {
+            if (ignoringCorpseDragCollision == ignore || bodyCollider == null || target == null)
+            {
+                return;
+            }
+
+            Collider2D[] playerColliders = target.GetComponentsInChildren<Collider2D>();
+            for (int i = 0; i < playerColliders.Length; i++)
+            {
+                Collider2D playerCollider = playerColliders[i];
+                if (playerCollider == null || playerCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(bodyCollider, playerCollider, ignore);
+            }
+
+            ignoringCorpseDragCollision = ignore;
         }
 
         private void RestorePlayerBodyCollision()
@@ -1722,6 +1896,11 @@ namespace Castlevania2D.Enemies
         public void EditorAssignBellyBounceFrames(Sprite[] bounce)
         {
             bellyBounceFrames = bounce ?? System.Array.Empty<Sprite>();
+        }
+
+        public void EditorAssignSleepFrames(Sprite[] sleep)
+        {
+            sleepFrames = sleep ?? System.Array.Empty<Sprite>();
         }
 
         private void OnDrawGizmosSelected()

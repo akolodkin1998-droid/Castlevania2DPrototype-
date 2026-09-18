@@ -77,6 +77,58 @@ namespace Castlevania2D.Loot
             if (bodyCollider != null)
             {
                 bodyCollider.isTrigger = false;
+                IgnorePlayerCollisions();
+            }
+        }
+
+        private void IgnorePlayerCollisions()
+        {
+            if (bodyCollider == null)
+            {
+                return;
+            }
+
+            GameObject[] players;
+            try
+            {
+                players = GameObject.FindGameObjectsWithTag("Player");
+            }
+            catch (UnityException)
+            {
+                players = System.Array.Empty<GameObject>();
+            }
+
+            for (int i = 0; i < players.Length; i++)
+            {
+                IgnoreCollisionsWith(players[i]);
+            }
+
+            GameObject namedPlayer = GameObject.Find("Player_HeroKnight");
+            if (namedPlayer == null)
+            {
+                namedPlayer = GameObject.Find("HeroKnight");
+            }
+
+            IgnoreCollisionsWith(namedPlayer);
+        }
+
+        private void IgnoreCollisionsWith(GameObject root)
+        {
+            if (root == null || bodyCollider == null)
+            {
+                return;
+            }
+
+            Collider2D[] colliders = root.GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D other = colliders[i];
+                if (other == null || other == bodyCollider || other.isTrigger)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(bodyCollider, other, true);
             }
         }
 
@@ -101,6 +153,10 @@ namespace Castlevania2D.Loot
             if (!magnetActive)
             {
                 TryFindMagnetTarget();
+                if (magnetActive && magnetTarget != null)
+                {
+                    IgnoreCollisionsWith(magnetTarget.gameObject);
+                }
             }
 
             if (magnetActive && magnetTarget != null)
@@ -120,6 +176,11 @@ namespace Castlevania2D.Loot
 
         private void OnCollisionEnter2D(Collision2D collision)
         {
+            if (collision.collider != null && IsPlayer(collision.collider))
+            {
+                Physics2D.IgnoreCollision(bodyCollider, collision.collider, true);
+            }
+
             if (collected || !CanCollect())
             {
                 return;

@@ -24,7 +24,7 @@ public static class MouseEnemySetupEditor
     private const string ScenePath = "Assets/Scenes/Prototype.unity";
     private const int MaxHealth = 5;
     private const float FrameRate = 12f;
-    private const float VisualScale = 0.78f;
+    private const float VisualScale = 0.92664f;
     private const float AggroRadius = 7f;
     private const float KnockbackDistance = 4f;
     private const float KnockbackSpeed = 7f;

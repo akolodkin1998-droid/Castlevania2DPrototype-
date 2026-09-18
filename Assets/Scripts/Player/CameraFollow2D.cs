@@ -8,9 +8,7 @@ namespace Castlevania2D.Player
     {
         [SerializeField] private Transform target;
         // Positive Y places the player lower on screen.
-        // Bottom edge locked: offsetY = orthoSize - (playerY - bottomWorldY).
-        // At orthoSize 6 with bottom ≈ -38.197: offsetY 4.815.
-        [SerializeField] private Vector2 offset = new Vector2(0f, 4.815f);
+        [SerializeField] private Vector2 offset = new Vector2(0f, 3.611f);
         [SerializeField] private float smoothTime = 0.15f;
         [SerializeField] private bool lockWorldY = true;
         [SerializeField] private float lockedWorldY = 4.99f;
@@ -126,10 +124,10 @@ namespace Castlevania2D.Player
                 return;
             }
 
-            float size = hasOrthoSnapshot ? savedOrthographicSize : 6f;
+            float size = hasOrthoSnapshot ? savedOrthographicSize : 5.445f;
             if (size < 0.5f || size > 20f)
             {
-                size = 6f;
+                size = 5.445f;
             }
 
             cameraComponent.orthographicSize = size;
@@ -211,12 +209,12 @@ namespace Castlevania2D.Player
             float size = orthographicSize;
             if (size < 0.5f || size > 12f)
             {
-                size = hasOrthoSnapshot ? savedOrthographicSize : 6f;
+                size = hasOrthoSnapshot ? savedOrthographicSize : 5.445f;
             }
 
             if (size < 0.5f || size > 12f)
             {
-                size = 6f;
+                size = 5.445f;
             }
 
             cameraComponent.orthographicSize = size;

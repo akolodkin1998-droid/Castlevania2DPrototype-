@@ -49,7 +49,7 @@ public static class MushomorEnemySetupEditor
     private const int HitActiveEndFrame = 7;
     private const float AttackCooldown = 1.1f;
     /// <summary>256x256 @ PPU 100 -> ~1.92 world units at 0.75 (small-enemy readable).</summary>
-    private const float VisualScale = 0.75f;
+    private const float VisualScale = 0.891f;
 
     /// <summary>Near player (-12) / snake (-4) on the Y~-37 playable strip.</summary>
     private static readonly Vector3 ScenePosition = new Vector3(-8.5f, -37.2f, 0f);

@@ -28,7 +28,7 @@ public static class EagleEnemySetupEditor
     private const int EagleMaxHealth = 40;
     private const int ContactDamage = 10;
     private const int ProjectileDamage = 10;
-    private const float VisualScale = 0.14f;
+    private const float VisualScale = 0.16632f;
 
     static EagleEnemySetupEditor()
     {

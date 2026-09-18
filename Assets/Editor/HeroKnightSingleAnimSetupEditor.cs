@@ -11,8 +11,10 @@ using UnityEngine;
 /// HeroKnight import from game_ready/frames into Unity Assets.
 /// Does NOT import from the OneDrive hash folder 1785214083_6a6834832efd6.
 /// </summary>
+[InitializeOnLoad]
 public static class HeroKnightSingleAnimSetupEditor
 {
+    private const string Attack1FlagPath = "Temp/setup_new_hero_attack1.flag";
     private const string SourceRoot =
         @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\warrior_animations_game_ready-v5 (1)\game_ready\frames";
 
@@ -27,59 +29,326 @@ public static class HeroKnightSingleAnimSetupEditor
 
     private static readonly Vector2 CanvasPivot = new Vector2(342f / CellWidth, (CellHeight - 654f) / CellHeight);
 
+    static HeroKnightSingleAnimSetupEditor()
+    {
+        EditorApplication.delayCall += TryApplyAttack1FromFlag;
+        EditorApplication.update += PollAttack1Flag;
+    }
+
+    private static void PollAttack1Flag()
+    {
+        if (!File.Exists(Attack1FlagPath)
+            || EditorApplication.isCompiling
+            || EditorApplication.isUpdating
+            || EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryApplyAttack1FromFlag();
+    }
+
+    private static void TryApplyAttack1FromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(Attack1FlagPath))
+        {
+            return;
+        }
+
+        File.Delete(Attack1FlagPath);
+        try
+        {
+            ApplyNewCharacterAttack1(openSpriteEditor: false);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText("Temp/setup_new_hero_attack1_result.txt", "OK");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText("Temp/setup_new_hero_attack1_result.txt", "FAIL\n" + exception);
+        }
+    }
+
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Idle")]
     public static void ApplyIdle()
     {
-        ApplyFolder("idle", "HeroKnight_Idle", "frame_*.png", 6, true, true, true);
+        ApplyNewCharacterIdle(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterIdle(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_idle.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Idle assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_idle.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_Idle", sprites, 6, true);
+        RepairAnimatorWiring();
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Run")]
     public static void ApplyRun()
     {
-        // Nested game_ready/frames/run/run (not parent frames/run).
-        string nestedRun = Path.Combine(SourceRoot, "run", "run");
-        ApplyExternalFolder(
-            nestedRun,
-            "frame_*.png",
-            "HeroKnight_run.png",
-            "HeroKnight_Run",
-            fps: 10,
-            loop: true,
-            pixelsPerUnit: PixelsPerUnit,
-            chromaKeyGray: false,
-            openSpriteEditor: true,
-            updatePrefabSprite: false,
-            cleanFrameNameOnly: true);
+        ApplyNewCharacterWalk(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterWalk(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_walk.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Walk assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_run.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        int[] startIndices = { 0, 1, 2, 3 };
+        int[] loopIndices =
+        {
+            4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
+        };
+        WriteClip("HeroKnight_RunStart", PickSprites(sprites, startIndices), 36, false);
+        WriteClip("HeroKnight_Run", PickSprites(sprites, loopIndices), 12, true);
+        RepairAnimatorWiring();
+    }
+
+    private static Sprite[] PickSprites(Sprite[] sprites, int[] indices)
+    {
+        var picked = new Sprite[indices.Length];
+        for (int i = 0; i < indices.Length; i++)
+        {
+            picked[i] = sprites[indices[i]];
+        }
+
+        return picked;
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Jump")]
     public static void ApplyJump()
     {
-        ApplyFolder("jump", "HeroKnight_Jump", "frame_*.png", 8, false, false, true);
+        ApplyNewCharacterJump(openSpriteEditor: true);
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Fall")]
     public static void ApplyFall()
     {
-        ApplyFolder("fall", "HeroKnight_Fall", "frame_*.png", 8, true, false, true);
+        ApplyNewCharacterJump(openSpriteEditor: false);
+    }
+
+    public static void ApplyNewCharacterJump(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_jump.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Jump assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_jump.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        int[] startIndices = { 0, 1, 2, 3, 4 };
+        int[] jumpIndices = { 5, 6 };
+        int[] fallIndices = { 7, 8, 9 };
+        int[] landIndices = { 10, 11, 12, 13, 14, 15 };
+        WriteClip("HeroKnight_JumpStart", PickSprites(sprites, startIndices), 36, false);
+        WriteClip("HeroKnight_Jump", PickSprites(sprites, jumpIndices), 8, false);
+        WriteClip("HeroKnight_Fall", PickSprites(sprites, fallIndices), 8, false);
+        WriteClip("HeroKnight_JumpLand", PickSprites(sprites, landIndices), 36, false);
+        RepairAnimatorWiring();
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Hurt")]
     public static void ApplyHurt()
     {
-        ApplyFolder("hurt", "HeroKnight_Hurt", "frame_*.png", 9, false, false, true);
+        ApplyNewCharacterHurt(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterHurt(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_hurt.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Hurt assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_hurt.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_Hurt", sprites, 12, false);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(stripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Death")]
+    public static void ApplyDeath()
+    {
+        ApplyNewCharacterDeath(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterDeath(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_death.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Death assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_death_blood.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_Death", sprites, 10, false);
+        WriteClip("HeroKnight_DeathNoBlood", sprites, 10, false);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(stripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Roll")]
     public static void ApplyRoll()
     {
-        ApplyFolder("roll", "HeroKnight_Roll", "frame_*.png", 12, false, false, true);
+        ApplyNewCharacterRoll(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterRoll(bool openSpriteEditor)
+    {
+        const string rollAssembler = @"Temp\assemble_new_hero_roll.py";
+        const string slideAssembler = @"Temp\assemble_new_hero_roll_slide.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string rollAssemblerPath = Path.Combine(projectRoot, rollAssembler);
+        string slideAssemblerPath = Path.Combine(projectRoot, slideAssembler);
+        if (!File.Exists(rollAssemblerPath))
+        {
+            throw new FileNotFoundException("Roll assembler missing.", rollAssemblerPath);
+        }
+
+        if (!File.Exists(slideAssemblerPath))
+        {
+            throw new FileNotFoundException("Roll slide assembler missing.", slideAssemblerPath);
+        }
+
+        RunPython(rollAssemblerPath);
+        const string rollStripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_roll.png";
+        AssetDatabase.ImportAsset(rollStripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] rollSprites = LoadStripSprites(rollStripPath);
+        WriteClip("HeroKnight_Roll", rollSprites, 12, false);
+
+        RunPython(slideAssemblerPath);
+        const string slideStripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_roll_slide.png";
+        AssetDatabase.ImportAsset(slideStripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] slideSprites = LoadStripSprites(slideStripPath);
+        int[] startIndices = { 0, 1, 2, 3, 4, 5, 6, 7 };
+        int[] loopIndices = { 8, 9 };
+        WriteClip("HeroKnight_RollSlide", PickSprites(slideSprites, startIndices), 12, false);
+        WriteClip("HeroKnight_RollSlideLoop", PickSprites(slideSprites, loopIndices), 12, true);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(slideStripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Attack 1")]
     public static void ApplyAttack1()
     {
-        ApplyFolder("attack_1", "HeroKnight_Attack1", "frame_*.png", 10, false, false, true);
+        ApplyNewCharacterAttack1(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterAttack1FromBatch()
+    {
+        ApplyNewCharacterAttack1(openSpriteEditor: false);
+    }
+
+    public static void ApplyNewCharacterAttack1(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_attack1.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Attack 1 assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_attack_1.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_Attack1", sprites, 20, false);
+        RepairAnimatorWiring();
+    }
+
+    private static void RunPython(string assemblerPath)
+    {
+        string python = File.Exists(@"C:\Users\Bensh\AppData\Local\Programs\Python\Python311\python.exe")
+            ? @"C:\Users\Bensh\AppData\Local\Programs\Python\Python311\python.exe"
+            : "python";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = python,
+            Arguments = "\"" + assemblerPath + "\"",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = projectRoot
+        };
+        using var process = System.Diagnostics.Process.Start(psi);
+        if (process == null)
+        {
+            throw new InvalidOperationException("Failed to start Python for Attack 1.");
+        }
+
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (!string.IsNullOrWhiteSpace(stdout))
+        {
+            Debug.Log(stdout.Trim());
+        }
+
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                "Attack 1 assemble failed: " + stderr + "\n" + stdout);
+        }
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Attack 2")]
@@ -97,30 +366,133 @@ public static class HeroKnightSingleAnimSetupEditor
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Block")]
     public static void ApplyBlock()
     {
-        ApplyFolder("block_effect", "HeroKnight_Block", "frame_*.png", 10, false, false, true);
+        ApplyNewCharacterBlock(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterBlock(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_block.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Block assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_effect.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_Block", sprites, 12, false);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(stripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Block Walk")]
+    public static void ApplyBlockWalk()
+    {
+        ApplyNewCharacterBlockWalk(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterBlockWalk(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_block_walk.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Block walk assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_walk.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        int[] startIndices = { 0, 1, 2 };
+        int[] loopIndices = { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        WriteClip("HeroKnight_BlockWalkStart", PickSprites(sprites, startIndices), 12, false);
+        WriteClip("HeroKnight_BlockWalk", PickSprites(sprites, loopIndices), 12, true);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(stripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Block Overhead")]
     public static void ApplyBlockOverhead()
     {
-        ApplyFolder("block_overhead", "HeroKnight_IdleBlock", "frame_*.png", 6, false, false, true);
+        ApplyNewCharacterBlockOverhead(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterBlockOverhead(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_block_overhead.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Overhead block assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_overhead.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_IdleBlock", sprites, 12, false);
+
+        Sprite[] reversed = new Sprite[sprites.Length];
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            reversed[i] = sprites[sprites.Length - 1 - i];
+        }
+
+        WriteClip("HeroKnight_IdleBlockRelease", reversed, 12, false);
+        RepairAnimatorWiring();
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Block Overhead Walk")]
     public static void ApplyBlockOverheadWalk()
     {
-        const string sourceFolder =
-            @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\warrior_animations_game_ready-v5 (1)\1785214083_6a6834832efd6\converted";
-        ApplyExternalFolder(
-            sourceFolder,
-            "frame_*-Photoroom.png",
-            "HeroKnight_block_overhead_walk.png",
-            "HeroKnight_IdleBlockWalk",
-            fps: 10,
-            loop: true,
-            pixelsPerUnit: 321,
-            chromaKeyGray: true,
-            openSpriteEditor: true);
+        ApplyNewCharacterBlockOverheadWalk(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterBlockOverheadWalk(bool openSpriteEditor)
+    {
+        const string assembler = @"Temp\assemble_new_hero_block_overhead_walk.py";
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string assemblerPath = Path.Combine(projectRoot, assembler);
+        if (!File.Exists(assemblerPath))
+        {
+            throw new FileNotFoundException("Overhead block walk assembler missing.", assemblerPath);
+        }
+
+        RunPython(assemblerPath);
+
+        string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_block_overhead_walk.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        int[] startIndices = { 0, 1, 2, 3, 4, 5 };
+        int[] loopIndices = { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        WriteClip("HeroKnight_IdleBlockWalkStart", PickSprites(sprites, startIndices), 12, false);
+        WriteClip("HeroKnight_IdleBlockWalk", PickSprites(sprites, loopIndices), 12, true);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(stripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
     }
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Apply All (Global Cell)")]
@@ -134,11 +506,13 @@ public static class HeroKnightSingleAnimSetupEditor
         ApplyJump();
         ApplyFall();
         ApplyHurt();
+        ApplyDeath();
         ApplyRoll();
         ApplyAttack1();
         ApplyAttack2();
         ApplyAttack3();
         ApplyBlock();
+        ApplyBlockWalk();
         ApplyBlockOverhead();
         ApplyBlockOverheadWalk();
         RepairAnimatorWiring();
@@ -174,18 +548,27 @@ public static class HeroKnightSingleAnimSetupEditor
     private static readonly Dictionary<string, string> StateToClipName = new Dictionary<string, string>
     {
         { "Idle", "HeroKnight_Idle" },
+        { "RunStart", "HeroKnight_RunStart" },
         { "Run", "HeroKnight_Run" },
         { "Hurt", "HeroKnight_Hurt" },
         { "Death", "HeroKnight_Death" },
         { "DeathNoBlood", "HeroKnight_DeathNoBlood" },
+        { "JumpStart", "HeroKnight_JumpStart" },
         { "Jump", "HeroKnight_Jump" },
         { "Fall", "HeroKnight_Fall" },
+        { "JumpLand", "HeroKnight_JumpLand" },
         { "Block", "HeroKnight_Block" },
+        { "Front Block Walk Start", "HeroKnight_BlockWalkStart" },
+        { "Front Block Walk", "HeroKnight_BlockWalk" },
         { "Roll", "HeroKnight_Roll" },
+        { "Roll Slide", "HeroKnight_RollSlide" },
+        { "Roll Slide Loop", "HeroKnight_RollSlideLoop" },
         { "Attack1", "HeroKnight_Attack1" },
         { "Attack2", "HeroKnight_Attack2" },
         { "Attack3", "HeroKnight_Attack3" },
         { "Idle Block", "HeroKnight_IdleBlock" },
+        { "Idle Block Release", "HeroKnight_IdleBlockRelease" },
+        { "Idle Block Walk Start", "HeroKnight_IdleBlockWalkStart" },
         { "Idle Block Walk", "HeroKnight_IdleBlockWalk" },
         { "Wall Slide", "HeroKnight_WallSlide" },
         { "Wall Slide Land", "HeroKnight_WallSlideLand" },
@@ -443,7 +826,7 @@ public static class HeroKnightSingleAnimSetupEditor
         importer.textureCompression = TextureImporterCompression.Uncompressed;
         importer.alphaIsTransparency = true;
         importer.mipmapEnabled = false;
-        importer.maxTextureSize = 8192;
+        importer.maxTextureSize = 16384;
 
         var metas = new SpriteMetaData[frameCount];
         for (int i = 0; i < frameCount; i++)
