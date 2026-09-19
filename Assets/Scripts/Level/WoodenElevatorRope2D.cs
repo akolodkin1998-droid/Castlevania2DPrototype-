@@ -8,12 +8,21 @@ namespace Castlevania2D.Level
     {
         [SerializeField] private Transform topAnchor;
         [SerializeField] private Transform bottomAnchor;
+        [SerializeField] private int sortingOrder = -1;
 
         private SpriteRenderer spriteRenderer;
+
+        public Transform TopAnchor => topAnchor;
+        public Transform BottomAnchor => bottomAnchor;
 
         private void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
+            if (GetComponent<ClimbableRope2D>() == null)
+            {
+                gameObject.AddComponent<ClimbableRope2D>();
+            }
+
             Stretch();
         }
 
@@ -69,6 +78,7 @@ namespace Castlevania2D.Level
             float width = spriteRenderer.sprite.bounds.size.x;
             spriteRenderer.drawMode = SpriteDrawMode.Tiled;
             spriteRenderer.size = new Vector2(Mathf.Max(0.02f, width), localHeight);
+            spriteRenderer.sortingOrder = sortingOrder;
             transform.localScale = Vector3.one;
         }
     }

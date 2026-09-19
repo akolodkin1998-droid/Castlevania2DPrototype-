@@ -237,52 +237,44 @@
     "attack_2": {
       "guid": "6154185ee4e244648c24306bd9995815",
       "clip": "HeroKnight_Attack2",
-      "frameCount": 6,
-      "cellWidth": 784,
-      "cellHeight": 736,
-      "globalCellWidth": 784,
-      "globalCellHeight": 736,
-      "ppu": 240,
+      "frameCount": 15,
+      "cellWidth": 896,
+      "cellHeight": 672,
+      "globalCellWidth": 896,
+      "globalCellHeight": 672,
+      "ppu": 207,
       "pivot": {
-        "x": 0.436224,
-        "y": 0.111413
+        "x": 0.416667,
+        "y": 0.084821
+      },
+      "hitFrame": 9,
+      "baseScale": 1.746,
+      "scale": {
+        "4-5": 1.07,
+        "6": 1.14,
+        "7-12": 1.17,
+        "13": 1.05
       },
       "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_attack_2.png",
-      "sourceFrames": [
-        "frame_000.png",
-        "frame_001.png",
-        "frame_002.png",
-        "frame_003.png",
-        "frame_004.png",
-        "frame_005.png"
-      ],
-      "sourceRoot": "game_ready/frames"
+      "sourceRoot": "Новый персонаж/Аттака 2"
     },
     "attack_3": {
       "guid": "8b2ba2b075184eed82308fddd815ba29",
       "clip": "HeroKnight_Attack3",
-      "frameCount": 8,
-      "cellWidth": 784,
-      "cellHeight": 736,
-      "globalCellWidth": 784,
-      "globalCellHeight": 736,
-      "ppu": 240,
+      "frameCount": 14,
+      "cellWidth": 896,
+      "cellHeight": 672,
+      "globalCellWidth": 896,
+      "globalCellHeight": 672,
+      "ppu": 207,
       "pivot": {
-        "x": 0.436224,
-        "y": 0.111413
+        "x": 0.416667,
+        "y": 0.084821
       },
+      "baseScale": 1.746,
+      "hitFrame": "Аттака3_0008",
       "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_attack_3.png",
-      "sourceFrames": [
-        "frame_000.png",
-        "frame_001.png",
-        "frame_002.png",
-        "frame_003.png",
-        "frame_004.png",
-        "frame_005.png",
-        "frame_006.png",
-        "frame_007.png"
-      ],
-      "sourceRoot": "game_ready/frames"
+      "sourceRoot": "Новый персонаж/Аттака 3"
     },
     "block_effect": {
       "guid": "18eb56b75821449d8165446f9ad04dd8",
@@ -558,6 +550,32 @@
         "0015",
         "0016",
         "0017"
+      ]
+    },
+    "climb": {
+      "guid": "b8e07d2f4e6a9b3c5d7e1f0a2b48c1a4",
+      "clip": "HeroKnight_Climb",
+      "frameCount": 8,
+      "cellWidth": 640,
+      "cellHeight": 512,
+      "globalCellWidth": 640,
+      "globalCellHeight": 512,
+      "ppu": 207,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_climb.png",
+      "sourceRoot": "Новый персонаж/Карапканье",
+      "sourceFrames": [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
+        "0006",
+        "0007",
+        "0008"
       ]
     }
   },

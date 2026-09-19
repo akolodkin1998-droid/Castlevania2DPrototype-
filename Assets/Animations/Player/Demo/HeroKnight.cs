@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Collections;
 using Castlevania2D.Combat;
+using Castlevania2D.Level;
 using Castlevania2D.Player;
 using PlayerHealth = Castlevania2D.Health.Health;
 
-public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump {
+public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump, IRopeClimber {
 
     [SerializeField] float      m_speed = 4.0f;
     [SerializeField] float      m_jumpForce = 7.5f;
@@ -22,6 +23,8 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     [SerializeField] private Vector2 m_slideBodyOffset = new Vector2(0f, 0.4f);
     [SerializeField] private Vector2 m_slideAttackBoxSize = new Vector2(1.8f, 0.8f);
     [SerializeField] private Vector2 m_slideAttackBoxOffset = new Vector2(0f, 0.4f);
+    [SerializeField] private float m_climbSpeed = 2.4f;
+    [SerializeField] private float m_climbRegrabDelay = 0.22f;
 
     private Animator            m_animator;
     private Rigidbody2D         m_body2d;
@@ -60,7 +63,18 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     private static readonly int RollState = Animator.StringToHash("Roll");
     private static readonly int RollSlideState = Animator.StringToHash("Roll Slide");
     private static readonly int RollSlideLoopState = Animator.StringToHash("Roll Slide Loop");
+    private static readonly int Attack1State = Animator.StringToHash("Attack1");
+    private static readonly int Attack2State = Animator.StringToHash("Attack2");
+    private static readonly int Attack3State = Animator.StringToHash("Attack3");
     private const int SlideLoopMaxCycles = 5;
+    private bool m_queuedAttack;
+    private bool m_climbing;
+    private bool m_mustLeaveRope;
+    private float m_climbRegrabUnlockTime;
+    private float m_storedGravityScale = 1f;
+    private ClimbableRope2D m_activeRope;
+    private ClimbableRope2D m_touchingRope;
+    private static readonly int ClimbState = Animator.StringToHash("Climb");
 
     public bool IsGrounded => m_grounded;
     public int FacingDirection => m_facingDirection;
@@ -190,19 +204,25 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         TickAttackHitbox();
         TickRoll();
 
-        //Check if character just landed on the ground
+        if (m_climbing)
+        {
+            TickClimb();
+            return;
+        }
+
         if (!m_grounded && m_groundSensor.State())
         {
             m_grounded = true;
             m_animator.SetBool("Grounded", m_grounded);
         }
 
-        //Check if character just started falling
         if (m_grounded && !m_groundSensor.State())
         {
             m_grounded = false;
             m_animator.SetBool("Grounded", m_grounded);
         }
+
+        TryMountFromTouch();
 
         // -- Handle input and movement --
         float inputX = Input.GetAxis("Horizontal");
@@ -232,6 +252,11 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
                 EndRoll();
             }
 
+            if (m_climbing)
+            {
+                EndClimb();
+            }
+
             Vector2 launched = m_body2d.linearVelocity;
             launched.x = knockbackVelocity.x;
             if (Mathf.Abs(knockbackVelocity.y) > 0.01f)
@@ -253,8 +278,16 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
         // -- Handle Animations --
         //Wall Slide
-        m_isWallSliding = (m_wallSensorR1.State() && m_wallSensorR2.State()) || (m_wallSensorL1.State() && m_wallSensorL2.State());
-        m_animator.SetBool("WallSlide", m_isWallSliding);
+        m_isWallSliding = false;
+        m_animator.SetBool("WallSlide", false);
+
+        bool inAttack = IsInAttack();
+        if (m_queuedAttack && !inAttack)
+        {
+            m_queuedAttack = false;
+            BeginNextAttack();
+            inAttack = true;
+        }
 
         bool overheadBlockPressed =
             !m_rolling &&
@@ -274,24 +307,16 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_animator.ResetTrigger("Block");
         }
         //Attack
-        else if (Input.GetMouseButtonDown(0) && m_timeSinceAttack > 0.25f && !m_rolling && !isOverheadBlocking)
+        else if (Input.GetMouseButtonDown(0) && !m_rolling && !isOverheadBlocking)
         {
-            m_currentAttack++;
-
-            // Loop back to one after third attack
-            if (m_currentAttack > 3)
-                m_currentAttack = 1;
-
-            // Reset Attack combo if time since last attack is too large
-            if (m_timeSinceAttack > 1.0f)
-                m_currentAttack = 1;
-
-            // Call one of three attack animations "Attack1", "Attack2", "Attack3"
-            m_animator.SetTrigger("Attack" + m_currentAttack);
-            BeginAttackHitbox();
-
-            // Reset timer
-            m_timeSinceAttack = 0.0f;
+            if (inAttack)
+            {
+                m_queuedAttack = true;
+            }
+            else
+            {
+                BeginNextAttack();
+            }
         }
         // Normal block: right mouse button only (no W).
         else if (Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !isOverheadBlocking)
@@ -340,8 +365,14 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             return;
         }
 
+        if (m_climbing)
+        {
+            EndClimb();
+        }
+
         if (m_animator != null)
         {
+            m_queuedAttack = false;
             m_animator.SetTrigger("Jump");
             m_animator.SetBool("Grounded", false);
         }
@@ -352,6 +383,151 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         if (m_groundSensor != null)
         {
             m_groundSensor.Disable(0.2f);
+        }
+
+        TryMountFromTouch();
+    }
+
+    public void NotifyRopeTouch(ClimbableRope2D rope)
+    {
+        if (rope == null)
+        {
+            return;
+        }
+
+        m_touchingRope = rope;
+        TryMountFromTouch();
+    }
+
+    public void NotifyRopeLeave(ClimbableRope2D rope)
+    {
+        if (m_touchingRope == rope)
+        {
+            m_touchingRope = null;
+        }
+
+        m_mustLeaveRope = false;
+    }
+
+    private void TryMountFromTouch()
+    {
+        if (m_climbing
+            || m_dead
+            || m_rolling
+            || m_grounded
+            || m_touchingRope == null
+            || m_mustLeaveRope
+            || Time.time < m_climbRegrabUnlockTime)
+        {
+            return;
+        }
+
+        BeginClimb(m_touchingRope);
+    }
+
+    private void BeginClimb(ClimbableRope2D rope)
+    {
+        if (rope == null || m_body2d == null)
+        {
+            return;
+        }
+
+        if (m_rolling)
+        {
+            EndRoll();
+        }
+
+        EndBlock();
+        m_queuedAttack = false;
+        m_climbing = true;
+        m_activeRope = rope;
+        m_storedGravityScale = m_body2d.gravityScale;
+        m_body2d.gravityScale = 0f;
+        m_body2d.linearVelocity = Vector2.zero;
+        m_grounded = false;
+
+        rope.GetClimbRange(out float bottomY, out float topY);
+        Vector3 position = transform.position;
+        position.x = rope.GrabX;
+        position.y = Mathf.Clamp(position.y, bottomY, topY);
+        transform.position = position;
+
+        if (m_animator != null)
+        {
+            m_animator.ResetTrigger("Jump");
+            m_animator.ResetTrigger("Attack1");
+            m_animator.ResetTrigger("Attack2");
+            m_animator.ResetTrigger("Attack3");
+            m_animator.ResetTrigger("Roll");
+            m_animator.SetBool("Grounded", false);
+            m_animator.SetBool("Climbing", true);
+            m_animator.SetFloat("ClimbSpeed", 0f);
+            m_animator.Play(ClimbState, 0, 0f);
+        }
+    }
+
+    private void TickClimb()
+    {
+        if (m_activeRope == null || !m_activeRope.isActiveAndEnabled)
+        {
+            EndClimb();
+            return;
+        }
+
+        if (m_knockbackReceiver != null && m_knockbackReceiver.IsActive)
+        {
+            EndClimb();
+            return;
+        }
+
+        if (Input.GetKeyDown("space"))
+        {
+            ForceJump();
+            return;
+        }
+
+        float inputY = Input.GetAxisRaw("Vertical");
+        m_activeRope.GetClimbRange(out float bottomY, out float topY);
+        Vector3 position = transform.position;
+        position.x = m_activeRope.GrabX;
+        position.y = Mathf.Clamp(position.y + inputY * m_climbSpeed * Time.deltaTime, bottomY, topY);
+        transform.position = position;
+        m_body2d.linearVelocity = Vector2.zero;
+
+        if (m_animator != null)
+        {
+            m_animator.SetBool("Climbing", true);
+            m_animator.SetFloat("ClimbSpeed", inputY);
+            m_animator.SetFloat("AirSpeedY", 0f);
+        }
+
+        if (inputY < -0.01f && position.y <= bottomY + 0.02f)
+        {
+            EndClimb();
+        }
+    }
+
+    private void EndClimb()
+    {
+        if (!m_climbing && m_activeRope == null)
+        {
+            return;
+        }
+
+        m_climbing = false;
+        m_activeRope = null;
+        m_mustLeaveRope = m_touchingRope != null;
+        m_climbRegrabUnlockTime = Time.time + m_climbRegrabDelay;
+
+        if (m_body2d != null)
+        {
+            m_body2d.gravityScale = m_storedGravityScale;
+        }
+
+        if (m_animator != null)
+        {
+            m_animator.SetBool("Climbing", false);
+            m_animator.SetFloat("ClimbSpeed", 0f);
         }
     }
 
@@ -381,8 +557,52 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             && m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash == RunStartState;
     }
 
+    private void BeginNextAttack()
+    {
+        m_currentAttack++;
+        if (m_currentAttack > 3)
+        {
+            m_currentAttack = 1;
+        }
+
+        if (m_timeSinceAttack > 1.0f)
+        {
+            m_currentAttack = 1;
+        }
+
+        m_animator.ResetTrigger("Attack1");
+        m_animator.ResetTrigger("Attack2");
+        m_animator.ResetTrigger("Attack3");
+        m_animator.SetTrigger("Attack" + m_currentAttack);
+        BeginAttackHitbox();
+        m_timeSinceAttack = 0.0f;
+    }
+
+    private bool IsInAttack()
+    {
+        if (m_animator == null)
+        {
+            return false;
+        }
+
+        int current = m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+        if (IsAttackStateHash(current))
+        {
+            return true;
+        }
+
+        return m_animator.IsInTransition(0)
+            && IsAttackStateHash(m_animator.GetNextAnimatorStateInfo(0).shortNameHash);
+    }
+
+    private static bool IsAttackStateHash(int hash)
+    {
+        return hash == Attack1State || hash == Attack2State || hash == Attack3State;
+    }
+
     private void BeginRoll()
     {
+        m_queuedAttack = false;
         m_rolling = true;
         m_rollEntered = false;
         m_animator.ResetTrigger("Roll");
@@ -641,8 +861,14 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_animator = GetComponent<Animator>();
         }
 
+        if (m_climbing)
+        {
+            EndClimb();
+        }
+
         if (m_animator != null)
         {
+            m_queuedAttack = false;
             m_animator.SetTrigger("Hurt");
         }
     }
@@ -650,8 +876,10 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     private void OnDied()
     {
         m_dead = true;
+        m_queuedAttack = false;
         EndBlock();
         EndRoll();
+        EndClimb();
         StopAttackHitbox();
 
         if (m_body2d == null)

@@ -53945,7 +53945,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8413529789942519730, guid: a4b4a6d32bcb19248a754d6602ffc7e4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 58.7
+      value: -42.77
       objectReference: {fileID: 0}
     - target: {fileID: 8413529789942519730, guid: a4b4a6d32bcb19248a754d6602ffc7e4, type: 3}
       propertyPath: m_LocalPosition.y
@@ -65729,6 +65729,18 @@ PrefabInstance:
     - target: {fileID: 3094439855600463293, guid: a51a39981a373d34bb92b9aa3c2de8fe, type: 3}
       propertyPath: m_Name
       value: WoodenElevatorCabin
+      objectReference: {fileID: 0}
+    - target: {fileID: 4061760806083039592, guid: a51a39981a373d34bb92b9aa3c2de8fe, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4061760806083039592, guid: a51a39981a373d34bb92b9aa3c2de8fe, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4061760806083039592, guid: a51a39981a373d34bb92b9aa3c2de8fe, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 2.9499981
       objectReference: {fileID: 0}
     - target: {fileID: 6976379852378796588, guid: a51a39981a373d34bb92b9aa3c2de8fe, type: 3}
       propertyPath: m_SortingOrder

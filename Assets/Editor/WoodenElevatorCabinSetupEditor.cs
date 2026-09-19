@@ -490,7 +490,7 @@ public static class WoodenElevatorCabinSetupEditor
         }
 
         renderer.sprite = ropeSprite;
-        renderer.sortingOrder = CabinSpriteOrder;
+        renderer.sortingOrder = -1;
         renderer.drawMode = SpriteDrawMode.Tiled;
 
         WoodenElevatorRope2D ropeLogic = ropeGo.GetComponent<WoodenElevatorRope2D>();
@@ -503,6 +503,12 @@ public static class WoodenElevatorCabinSetupEditor
         serialized.FindProperty("topAnchor").objectReferenceValue = winch;
         serialized.FindProperty("bottomAnchor").objectReferenceValue = hookGo.transform;
         serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        if (ropeGo.GetComponent<ClimbableRope2D>() == null)
+        {
+            ropeGo.AddComponent<ClimbableRope2D>();
+        }
+
         ropeLogic.Stretch();
     }
 
