@@ -37,6 +37,11 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     private Sensor_HeroKnight   m_wallSensorR2;
     private Sensor_HeroKnight   m_wallSensorL1;
     private Sensor_HeroKnight   m_wallSensorL2;
+    private PhysicsMaterial2D   m_standingBodyMaterial;
+    private PhysicsMaterial2D   m_standingRbMaterial;
+    private bool                m_zeroFrictionOnWall;
+    private static PhysicsMaterial2D s_wallSlideMaterial;
+    private readonly ContactPoint2D[] m_contacts = new ContactPoint2D[16];
     private bool                m_isWallSliding = false;
     private bool                m_grounded = false;
     private bool                m_rolling = false;
@@ -186,6 +191,25 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     }
 
     // Update is called once per frame
+    void FixedUpdate()
+    {
+        if (m_dead || m_climbing || m_rolling || m_body2d == null)
+        {
+            return;
+        }
+
+        float inputX = Input.GetAxisRaw("Horizontal");
+        if (!IsAirborneAgainstWall(inputX))
+        {
+            return;
+        }
+
+        Vector2 velocity = m_body2d.linearVelocity;
+        velocity.x = 0f;
+        m_body2d.linearVelocity = velocity;
+        SetWallSlideFriction(true);
+    }
+
     void Update ()
     {
         if (m_dead)
@@ -225,7 +249,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         TryMountFromTouch();
 
         // -- Handle input and movement --
-        float inputX = Input.GetAxis("Horizontal");
+        float inputX = Input.GetAxisRaw("Horizontal");
         bool isOverheadBlocking = m_overheadBlockHeld;
 
         // Swap direction of sprite depending on walk direction
@@ -269,8 +293,14 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         // Move (overhead block allows horizontal walk; uses IdleBlockWalk clip)
         else if (!m_rolling)
         {
-            float walkSpeed = IsWalkStartupLocked() ? 0f : inputX * m_speed;
+            bool slideDownWall = IsAirborneAgainstWall(inputX);
+            float walkSpeed = IsWalkStartupLocked() || slideDownWall ? 0f : inputX * m_speed;
             m_body2d.linearVelocity = new Vector2(walkSpeed, m_body2d.linearVelocity.y);
+            SetWallSlideFriction(slideDownWall);
+        }
+        else
+        {
+            SetWallSlideFriction(false);
         }
 
         //Set AirSpeed in animator
@@ -555,6 +585,134 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     {
         return m_animator != null
             && m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash == RunStartState;
+    }
+
+    private bool IsAirborneAgainstWall(float inputX)
+    {
+        return !HasFloorContact() && IsPressingIntoWall(inputX);
+    }
+
+    private bool HasFloorContact()
+    {
+        if (m_body2d == null)
+        {
+            return m_grounded;
+        }
+
+        int count = m_body2d.GetContacts(m_contacts);
+        for (int i = 0; i < count; i++)
+        {
+            if (m_contacts[i].normal.y > 0.65f)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsPressingIntoWall(float inputX)
+    {
+        if (Mathf.Abs(inputX) < 0.01f)
+        {
+            return false;
+        }
+
+        float inputSign = Mathf.Sign(inputX);
+        if (m_body2d != null)
+        {
+            int count = m_body2d.GetContacts(m_contacts);
+            for (int i = 0; i < count; i++)
+            {
+                float normalX = m_contacts[i].normal.x;
+                if (Mathf.Abs(normalX) >= 0.65f && inputSign * normalX < 0f)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return CastHitsWall(inputSign);
+    }
+
+    private bool CastHitsWall(float inputSign)
+    {
+        if (m_bodyCollider == null)
+        {
+            return false;
+        }
+
+        Vector2 origin = (Vector2)transform.position + m_bodyCollider.offset;
+        RaycastHit2D[] hits = Physics2D.CapsuleCastAll(
+            origin,
+            m_bodyCollider.size,
+            m_bodyCollider.direction,
+            0f,
+            new Vector2(inputSign, 0f),
+            0.08f);
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit2D hit = hits[i];
+            if (hit.collider == null || hit.collider.isTrigger || hit.collider == m_bodyCollider)
+            {
+                continue;
+            }
+
+            if (hit.rigidbody == m_body2d)
+            {
+                continue;
+            }
+
+            if (Mathf.Abs(hit.normal.x) >= 0.65f && inputSign * hit.normal.x < 0f)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void SetWallSlideFriction(bool slidingDown)
+    {
+        if (slidingDown == m_zeroFrictionOnWall)
+        {
+            return;
+        }
+
+        if (!m_zeroFrictionOnWall)
+        {
+            if (m_bodyCollider != null)
+            {
+                m_standingBodyMaterial = m_bodyCollider.sharedMaterial;
+            }
+
+            if (m_body2d != null)
+            {
+                m_standingRbMaterial = m_body2d.sharedMaterial;
+            }
+        }
+
+        if (slidingDown && s_wallSlideMaterial == null)
+        {
+            s_wallSlideMaterial = new PhysicsMaterial2D("HeroKnightWallSlide")
+            {
+                friction = 0f,
+                bounciness = 0f
+            };
+        }
+
+        m_zeroFrictionOnWall = slidingDown;
+        PhysicsMaterial2D material = slidingDown ? s_wallSlideMaterial : m_standingBodyMaterial;
+        if (m_bodyCollider != null)
+        {
+            m_bodyCollider.sharedMaterial = material;
+        }
+
+        if (m_body2d != null)
+        {
+            m_body2d.sharedMaterial = slidingDown ? s_wallSlideMaterial : m_standingRbMaterial;
+        }
     }
 
     private void BeginNextAttack()

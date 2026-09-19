@@ -8,9 +8,12 @@ namespace Castlevania2D.Level
     {
         [SerializeField] private Transform topAnchor;
         [SerializeField] private Transform bottomAnchor;
-        [SerializeField] private int sortingOrder = -1;
+        [SerializeField] [Min(0.02f)] private float width = 0.06f;
 
         private SpriteRenderer spriteRenderer;
+        private float authoredLocalHeight;
+        private float authoredGap;
+        private bool captured;
 
         public Transform TopAnchor => topAnchor;
         public Transform BottomAnchor => bottomAnchor;
@@ -23,29 +26,31 @@ namespace Castlevania2D.Level
                 gameObject.AddComponent<ClimbableRope2D>();
             }
 
-            Stretch();
+            CaptureAuthoredLength();
         }
 
         private void LateUpdate()
         {
-            Stretch();
+            ApplyAuthoredStretch();
         }
 
-#if UNITY_EDITOR
-        private void OnValidate()
+        private void CaptureAuthoredLength()
         {
-            if (!Application.isPlaying)
+            if (spriteRenderer == null)
             {
-                Stretch();
+                spriteRenderer = GetComponent<SpriteRenderer>();
             }
-        }
-#endif
 
-        public void Stretch()
+            authoredLocalHeight = spriteRenderer != null ? spriteRenderer.size.y : 1f;
+            authoredGap = MeasureGap();
+            captured = true;
+        }
+
+        private void ApplyAuthoredStretch()
         {
-            if (topAnchor == null || bottomAnchor == null)
+            if (!captured)
             {
-                return;
+                CaptureAuthoredLength();
             }
 
             if (spriteRenderer == null)
@@ -58,28 +63,57 @@ namespace Castlevania2D.Level
                 return;
             }
 
-            Vector3 top = topAnchor.position;
-            Vector3 bottom = bottomAnchor.position;
-            float distance = top.y - bottom.y;
-            if (distance < 0.02f)
+            float extraLocal = 0f;
+            if (topAnchor != null && bottomAnchor != null)
             {
-                spriteRenderer.enabled = false;
+                float worldScaleY = Mathf.Abs(transform.lossyScale.y);
+                extraLocal = (MeasureGap() - authoredGap) / Mathf.Max(0.0001f, worldScaleY);
+            }
+
+            float height = Mathf.Max(0.02f, authoredLocalHeight + extraLocal);
+            spriteRenderer.enabled = true;
+            spriteRenderer.drawMode = SpriteDrawMode.Tiled;
+            spriteRenderer.size = new Vector2(Mathf.Max(0.02f, width), height);
+        }
+
+        public void UpdateLength()
+        {
+            if (!Application.isPlaying)
+            {
+                if (spriteRenderer == null)
+                {
+                    spriteRenderer = GetComponent<SpriteRenderer>();
+                }
+
+                if (spriteRenderer == null || spriteRenderer.sprite == null || topAnchor == null || bottomAnchor == null)
+                {
+                    return;
+                }
+
+                float distance = MeasureGap();
+                if (distance < 0.02f)
+                {
+                    return;
+                }
+
+                float worldScaleY = Mathf.Abs(transform.lossyScale.y);
+                float localHeight = distance / Mathf.Max(0.0001f, worldScaleY);
+                spriteRenderer.drawMode = SpriteDrawMode.Tiled;
+                spriteRenderer.size = new Vector2(Mathf.Max(0.02f, width), localHeight);
                 return;
             }
 
-            spriteRenderer.enabled = true;
-            transform.position = new Vector3(bottom.x, bottom.y, bottom.z);
-            transform.rotation = Quaternion.identity;
+            ApplyAuthoredStretch();
+        }
 
-            float parentScaleY = transform.parent != null
-                ? Mathf.Abs(transform.parent.lossyScale.y)
-                : 1f;
-            float localHeight = distance / Mathf.Max(0.0001f, parentScaleY);
-            float width = spriteRenderer.sprite.bounds.size.x;
-            spriteRenderer.drawMode = SpriteDrawMode.Tiled;
-            spriteRenderer.size = new Vector2(Mathf.Max(0.02f, width), localHeight);
-            spriteRenderer.sortingOrder = sortingOrder;
-            transform.localScale = Vector3.one;
+        private float MeasureGap()
+        {
+            if (topAnchor == null || bottomAnchor == null)
+            {
+                return 0f;
+            }
+
+            return topAnchor.position.y - bottomAnchor.position.y;
         }
     }
 }

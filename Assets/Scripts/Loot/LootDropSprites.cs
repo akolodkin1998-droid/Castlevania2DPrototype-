@@ -12,12 +12,14 @@ namespace Castlevania2D.Loot
         private const string PotionPath = "Items/Drop_Potion";
         private const string MaraTearPath = "Items/Drop_MaraTear";
         private const string SporeBagPath = "Items/Drop_SporeBag";
+        private const string LikhoKeyPath = "Items/Drop_LikhoKey";
 
         private static Sprite common;
         private static Sprite ent;
         private static Sprite potion;
         private static Sprite maraTear;
         private static Sprite sporeBag;
+        private static Sprite likhoKey;
         private static bool loadAttempted;
 
         public static Sprite Common
@@ -65,6 +67,15 @@ namespace Castlevania2D.Loot
             }
         }
 
+        public static Sprite LikhoKey
+        {
+            get
+            {
+                EnsureLoaded();
+                return likhoKey;
+            }
+        }
+
         public static bool AreReady
         {
             get
@@ -87,6 +98,7 @@ namespace Castlevania2D.Loot
             potion = Resources.Load<Sprite>(PotionPath);
             maraTear = Resources.Load<Sprite>(MaraTearPath);
             sporeBag = Resources.Load<Sprite>(SporeBagPath);
+            likhoKey = Resources.Load<Sprite>(LikhoKeyPath);
 
             if (common == null)
             {
@@ -111,6 +123,11 @@ namespace Castlevania2D.Loot
             if (sporeBag == null)
             {
                 sporeBag = CreateSpriteFromTexture(SporeBagPath);
+            }
+
+            if (likhoKey == null)
+            {
+                likhoKey = CreateSpriteFromTexture(LikhoKeyPath);
             }
         }
 

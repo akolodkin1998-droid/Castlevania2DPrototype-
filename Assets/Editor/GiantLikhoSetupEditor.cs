@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Castlevania2D.Enemies;
 using Castlevania2D.Health;
+using Castlevania2D.Loot;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -432,6 +433,12 @@ public static class GiantLikhoSetupEditor
                 impactFrames,
                 jumpPrepareFrames,
                 jumpFrames);
+
+            LootDropOnDeath loot = root.AddComponent<LootDropOnDeath>();
+            var lootSerialized = new SerializedObject(loot);
+            lootSerialized.FindProperty("guaranteeLikhoKey").boolValue = true;
+            lootSerialized.FindProperty("likhoKeyPickupScale").floatValue = 1f / 3f;
+            lootSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             return PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
         }

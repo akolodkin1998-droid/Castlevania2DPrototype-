@@ -288,6 +288,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   winch: {fileID: 4757549742249653070}
+  descentSpeed: 2
+  groundSkin: 0.03
 --- !u!1 &3983474476083677746
 GameObject:
   m_ObjectHideFlags: 0
@@ -497,10 +499,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c8d4e6f1a0b4c7d9e3f5a8b1c4d7021, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cabinRenderer: {fileID: 933280149128538304}
-  beamRenderer: {fileID: 6495138693096784726}
-  cabinSortingOrder: 1
-  beamSortingOrder: 6
   playerInsideSortingOrder: 3
   playerObjectName: Player_HeroKnight
 --- !u!1 &7371233257185713843
@@ -607,7 +605,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   topAnchor: {fileID: 3720829572473155489}
   bottomAnchor: {fileID: 8871922833462607136}
-  sortingOrder: -1
+  width: 0.06
 --- !u!61 &3279106581794675354
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -791,6 +789,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8234019283746501929}
   - component: {fileID: 8234019283746501930}
+  - component: {fileID: 8234019283746501931}
   m_Layer: 0
   m_Name: GearBox
   m_TagString: Untagged
@@ -868,6 +867,30 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &8234019283746501931
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8234019283746501928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e4a9c1b5d8240f3a6b8e2c4d0f1a357, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interactionDistance: 2.2
+  promptLocalPosition: {x: 0, y: 1.55, z: 0}
+  promptScale: {x: 0.48, y: 0.48, z: 1}
+  promptPopDuration: 0.22
+  promptPopOffset: 0.2
+  promptSprite: {fileID: 0}
+  interiorSprite: {fileID: 21300000, guid: 9c2d4e6f8a1b4c3d5e7f9012345678ab, type: 3}
+  leverSprite: {fileID: 0}
+  leverDownSprite: {fileID: 0}
+  interiorScreenSize: {x: 720, y: 405}
+  leverScreenSize: {x: 336, y: 336}
+  interiorPopDuration: 0.18
 --- !u!1 &8242224648868021714
 GameObject:
   m_ObjectHideFlags: 0

@@ -42,6 +42,7 @@ namespace Castlevania2D.Loot
                 LootItemId.Potion => LootDropSprites.Potion,
                 LootItemId.MaraTear => LootDropSprites.MaraTear,
                 LootItemId.SporeBag => LootDropSprites.SporeBag,
+                LootItemId.LikhoKey => LootDropSprites.LikhoKey,
                 _ => LootDropSprites.Common,
             };
         }
@@ -54,6 +55,7 @@ namespace Castlevania2D.Loot
                 LootItemId.Potion => 0.08f * 6f / 10f,
                 LootItemId.MaraTear => 0.1f,
                 LootItemId.SporeBag => 0.48f,
+                LootItemId.LikhoKey => 1f / 3f,
                 _ => 0.08f / 7f,
             };
         }

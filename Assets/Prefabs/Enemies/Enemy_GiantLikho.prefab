@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 5288889617102253743}
   - component: {fileID: 1703294602422697973}
   - component: {fileID: 8932256571013975297}
+  - component: {fileID: 774411228901}
   m_Layer: 0
   m_Name: Enemy_GiantLikho
   m_TagString: Untagged
@@ -338,3 +339,40 @@ MonoBehaviour:
   bellyBounceKnockbackDuration: 0.2
   bellyZoneMinX: -0.32
   bellyZoneMaxX: 0.22
+--- !u!114 &774411228901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3748166799113611344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbfb40fb13c78d541bfa3865e8bed3c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  commonMinCount: 0
+  commonMaxCount: 2
+  potionDropChance: 0.15
+  maraTearDropChance: 0.05
+  guaranteedMaraTearCount: 0
+  guaranteeSporeBag: 0
+  guaranteedSporeBagCount: 1
+  guaranteeLikhoKey: 1
+  dropBonusLoot: 0
+  bonusCount: 1
+  spawnOffset: {x: 0, y: 0.4}
+  popSpeedMin: 2.5
+  popSpeedMax: 5
+  popAngleSpread: 55
+  commonPickupScale: 0.011428572
+  potionPickupScale: 0.048
+  maraTearPickupScale: 0.1
+  sporeBagPickupScale: 0.48
+  likhoKeyPickupScale: 0.33333334
+  bonusPickupScale: 0.064
+  sortingOrder: 6
+  colliderRadius: 0.35
+  gravityScale: 2.2
+  bounciness: 0.35
+  friction: 0.35

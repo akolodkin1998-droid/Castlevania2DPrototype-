@@ -7,5 +7,6 @@ namespace Castlevania2D.Loot
         Potion = 2,
         MaraTear = 3,
         SporeBag = 4,
+        LikhoKey = 5,
     }
 }

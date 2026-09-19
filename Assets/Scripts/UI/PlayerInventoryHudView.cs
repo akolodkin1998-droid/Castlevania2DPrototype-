@@ -36,6 +36,7 @@ namespace Castlevania2D.UI
         [SerializeField] private string entItemResourcePath = "Items/Drop_Ent";
         [SerializeField] private string maraTearItemResourcePath = "Items/Drop_MaraTear";
         [SerializeField] private string sporeBagItemResourcePath = "Items/Drop_SporeBag";
+        [SerializeField] private string likhoKeyItemResourcePath = "Items/Drop_LikhoKey";
 
         [Header("Layout")]
         [SerializeField] [Range(0.35f, 0.85f)] private float panelScreenFraction = 0.62f;
@@ -55,6 +56,7 @@ namespace Castlevania2D.UI
         private Sprite entSprite;
         private Sprite maraTearSprite;
         private Sprite sporeBagSprite;
+        private Sprite likhoKeySprite;
         private Font uiFont;
 
         private PlayerLootInventory inventory;
@@ -76,6 +78,7 @@ namespace Castlevania2D.UI
             entSprite = LoadItemSprite(entItemResourcePath);
             maraTearSprite = LoadItemSprite(maraTearItemResourcePath);
             sporeBagSprite = LoadItemSprite(sporeBagItemResourcePath);
+            likhoKeySprite = LoadItemSprite(likhoKeyItemResourcePath);
             CreateUiIfNeeded();
             SetVisible(false);
         }
@@ -378,6 +381,7 @@ namespace Castlevania2D.UI
                 LootItemId.Ent => entSprite,
                 LootItemId.MaraTear => maraTearSprite,
                 LootItemId.SporeBag => sporeBagSprite,
+                LootItemId.LikhoKey => likhoKeySprite,
                 _ => null,
             };
         }

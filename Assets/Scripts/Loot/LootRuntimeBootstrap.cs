@@ -66,6 +66,7 @@ namespace Castlevania2D.Loot
             bool isEnt = owner.name.IndexOf("Ent", System.StringComparison.OrdinalIgnoreCase) >= 0;
             bool isMushomor =
                 owner.name.IndexOf("Mushomor", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isGiantLikho = IsGiantLikho(owner);
             LootDropOnDeath drop = owner.GetComponent<LootDropOnDeath>();
             if (drop == null)
             {
@@ -78,6 +79,10 @@ namespace Castlevania2D.Loot
                 isEnt ? LootDropSprites.Ent : null,
                 isEnt,
                 isMushomor);
+            if (isGiantLikho)
+            {
+                drop.ConfigureGiantLikhoKeyDrop();
+            }
         }
 
         private static void EnsurePlayerComponents()
@@ -190,7 +195,20 @@ namespace Castlevania2D.Loot
             }
 
             string name = gameObject.name;
-            return name.StartsWith("Enemy_", System.StringComparison.OrdinalIgnoreCase);
+            return name.StartsWith("Enemy_", System.StringComparison.OrdinalIgnoreCase)
+                   || IsGiantLikho(gameObject);
+        }
+
+        private static bool IsGiantLikho(GameObject gameObject)
+        {
+            if (gameObject == null)
+            {
+                return false;
+            }
+
+            string name = gameObject.name;
+            return name.IndexOf("GiantLikho", System.StringComparison.OrdinalIgnoreCase) >= 0
+                   || name.IndexOf("ОгромноеЛихо", System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }

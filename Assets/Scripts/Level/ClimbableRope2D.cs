@@ -132,10 +132,8 @@ namespace Castlevania2D.Level
             }
 
             float height = Mathf.Abs(top.position.y - bottom.position.y);
-            float parentScaleY = transform.parent != null
-                ? Mathf.Abs(transform.parent.lossyScale.y)
-                : 1f;
-            float localHeight = height / Mathf.Max(0.0001f, parentScaleY);
+            float worldScaleY = Mathf.Abs(transform.lossyScale.y);
+            float localHeight = height / Mathf.Max(0.0001f, worldScaleY);
             grabCollider.isTrigger = true;
             grabCollider.size = new Vector2(grabWidth, Mathf.Max(0.2f, localHeight));
             grabCollider.offset = new Vector2(0f, grabCollider.size.y * 0.5f);

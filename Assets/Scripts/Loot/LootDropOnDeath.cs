@@ -27,6 +27,9 @@ namespace Castlevania2D.Loot
         [SerializeField] private bool guaranteeSporeBag;
         [SerializeField] private int guaranteedSporeBagCount = 1;
 
+        [Header("Likho Key (Giant Likho)")]
+        [SerializeField] private bool guaranteeLikhoKey;
+
         [Header("Bonus (e.g. Ent only)")]
         [SerializeField] private bool dropBonusLoot;
         [SerializeField] private int bonusCount = 1;
@@ -40,6 +43,7 @@ namespace Castlevania2D.Loot
         [SerializeField] private float potionPickupScale = 0.08f * 6f / 10f;
         [SerializeField] private float maraTearPickupScale = 0.1f;
         [SerializeField] private float sporeBagPickupScale = 0.48f;
+        [SerializeField] private float likhoKeyPickupScale = 1f / 3f;
         [SerializeField] private float bonusPickupScale = 0.064f;
         [SerializeField] private int sortingOrder = 6;
         [SerializeField] private float colliderRadius = 0.35f;
@@ -53,6 +57,7 @@ namespace Castlevania2D.Loot
         private Sprite potionSprite;
         private Sprite maraTearSprite;
         private Sprite sporeBagSprite;
+        private Sprite likhoKeySprite;
         private Sprite bonusSprite;
 
         private void Awake()
@@ -70,7 +75,14 @@ namespace Castlevania2D.Loot
             guaranteedMaraTearCount = Mathf.Max(0, tearCount);
             guaranteeSporeBag = false;
             guaranteedSporeBagCount = 0;
+            guaranteeLikhoKey = false;
             dropBonusLoot = false;
+            EnsureSpritesLoaded();
+        }
+
+        public void ConfigureGiantLikhoKeyDrop()
+        {
+            guaranteeLikhoKey = true;
             EnsureSpritesLoaded();
         }
 
@@ -164,6 +176,11 @@ namespace Castlevania2D.Loot
                 }
             }
 
+            if (guaranteeLikhoKey)
+            {
+                SpawnOne(LootItemId.LikhoKey, likhoKeySprite, origin, 0, 1);
+            }
+
             if (dropBonusLoot && bonusSprite != null)
             {
                 for (int i = 0; i < Mathf.Max(0, bonusCount); i++)
@@ -193,6 +210,11 @@ namespace Castlevania2D.Loot
             if (sporeBagSprite == null)
             {
                 sporeBagSprite = LootDropSprites.SporeBag;
+            }
+
+            if (likhoKeySprite == null)
+            {
+                likhoKeySprite = LootDropSprites.LikhoKey;
             }
 
             if (dropBonusLoot && bonusSprite == null)
@@ -236,6 +258,7 @@ namespace Castlevania2D.Loot
                 LootItemId.Potion => potionPickupScale,
                 LootItemId.MaraTear => maraTearPickupScale,
                 LootItemId.SporeBag => sporeBagPickupScale,
+                LootItemId.LikhoKey => likhoKeyPickupScale,
                 _ => commonPickupScale,
             };
 

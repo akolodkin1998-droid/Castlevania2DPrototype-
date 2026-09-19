@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Castlevania2D.Environment;
 using Castlevania2D.Level;
 using UnityEditor;
 using UnityEngine;
@@ -292,13 +293,14 @@ public static class WoodenElevatorCabinSetupEditor
         }
 
         SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
-        if (renderer == null)
+        bool createdRenderer = renderer == null;
+        if (createdRenderer)
         {
             renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = sortingOrder;
         }
 
         renderer.sprite = sprite;
-        renderer.sortingOrder = sortingOrder;
     }
 
     private static GameObject ConfigureBoxChild(
@@ -321,33 +323,20 @@ public static class WoodenElevatorCabinSetupEditor
         if (box == null)
         {
             box = go.AddComponent<BoxCollider2D>();
+            box.offset = offset;
+            box.size = size;
         }
 
         box.isTrigger = isTrigger;
-        box.offset = offset;
-        box.size = size;
         return go;
     }
 
     private static void WireCabinLogic(Transform root, GameObject interior)
     {
-        WoodenElevatorCabin2D logic = interior.GetComponent<WoodenElevatorCabin2D>();
-        if (logic == null)
+        if (interior.GetComponent<WoodenElevatorCabin2D>() == null)
         {
-            logic = interior.AddComponent<WoodenElevatorCabin2D>();
+            interior.AddComponent<WoodenElevatorCabin2D>();
         }
-
-        Transform cabin = root.Find(CabinName);
-        Transform beam = root.Find(BeamName);
-        SerializedObject serialized = new SerializedObject(logic);
-        serialized.FindProperty("cabinRenderer").objectReferenceValue =
-            cabin != null ? cabin.GetComponent<SpriteRenderer>() : null;
-        serialized.FindProperty("beamRenderer").objectReferenceValue =
-            beam != null ? beam.GetComponent<SpriteRenderer>() : null;
-        serialized.FindProperty("cabinSortingOrder").intValue = CabinSpriteOrder;
-        serialized.FindProperty("beamSortingOrder").intValue = BeamSortingOrder;
-        serialized.FindProperty("playerInsideSortingOrder").intValue = 3;
-        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private static void CopyWinchSources()
@@ -484,13 +473,14 @@ public static class WoodenElevatorCabinSetupEditor
         }
 
         SpriteRenderer renderer = ropeGo.GetComponent<SpriteRenderer>();
-        if (renderer == null)
+        bool createdRenderer = renderer == null;
+        if (createdRenderer)
         {
             renderer = ropeGo.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = -1;
         }
 
         renderer.sprite = ropeSprite;
-        renderer.sortingOrder = -1;
         renderer.drawMode = SpriteDrawMode.Tiled;
 
         WoodenElevatorRope2D ropeLogic = ropeGo.GetComponent<WoodenElevatorRope2D>();
@@ -509,7 +499,7 @@ public static class WoodenElevatorCabinSetupEditor
             ropeGo.AddComponent<ClimbableRope2D>();
         }
 
-        ropeLogic.Stretch();
+            ropeLogic.UpdateLength();
     }
 
     private static void CopyGearBoxSource()
@@ -544,13 +534,19 @@ public static class WoodenElevatorCabinSetupEditor
         }
 
         SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
-        if (renderer == null)
+        bool createdRenderer = renderer == null;
+        if (createdRenderer)
         {
             renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = GearBoxSortingOrder;
         }
 
         renderer.sprite = sprite;
-        renderer.sortingOrder = GearBoxSortingOrder;
+
+        if (go.GetComponent<GearBoxInspect2D>() == null)
+        {
+            go.AddComponent<GearBoxInspect2D>();
+        }
     }
 
     private static void ConfigureWinch(Transform parent, Sprite[] frames)
@@ -575,13 +571,14 @@ public static class WoodenElevatorCabinSetupEditor
         }
 
         SpriteRenderer renderer = go.GetComponent<SpriteRenderer>();
-        if (renderer == null)
+        bool createdRenderer = renderer == null;
+        if (createdRenderer)
         {
             renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = WinchSortingOrder;
         }
 
         renderer.sprite = frames[0];
-        renderer.sortingOrder = WinchSortingOrder;
 
         WoodenElevatorWinch2D winch = go.GetComponent<WoodenElevatorWinch2D>();
         if (winch == null)
