@@ -33,6 +33,12 @@ namespace Castlevania2D.Hub
 
         public event Action<int> ChoiceChosen;
 
+        public void SetInteractionTuning(float distance, Vector3 promptPos)
+        {
+            interactionDistance = distance;
+            promptLocalPosition = promptPos;
+        }
+
         public void ApplyDefaultsIfEmpty(string npcName, string spokenLine, string[] replyChoices)
         {
             if (string.IsNullOrWhiteSpace(speakerName) || speakerName == "NPC")

@@ -78,19 +78,41 @@ namespace Castlevania2D.Enemies
         }
 
         /// <summary>
-        /// Portal summons walk off cliffs: no vertical aggro freeze, Y locked, static walls ignored.
+        /// Portal spawn: plant only if solid floor is right under the feet; otherwise fall.
         /// </summary>
-        public void MarkAsPortalSummon()
+        public void PlaceOnNearbyGroundOrFall()
         {
-            isPortalSummon = true;
             if (body == null || bodyCollider == null)
             {
                 return;
             }
 
-            body.gravityScale = 0f;
-            body.constraints = RigidbodyConstraints2D.FreezeRotation | RigidbodyConstraints2D.FreezePositionY;
-            IgnoreStaticWorldColliders();
+            Physics2D.SyncTransforms();
+            body.linearVelocity = Vector2.zero;
+            hasPlacedOnGround = true;
+            if (TryPlaceIfGroundNearby(2f))
+            {
+                return;
+            }
+
+            body.gravityScale = gravityScale;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation;
+        }
+
+        /// <summary>
+        /// Portal summons keep gravity so they fall when the floor under them disappears.
+        /// </summary>
+        public void MarkAsPortalSummon()
+        {
+            isPortalSummon = true;
+            if (body == null)
+            {
+                return;
+            }
+
+            body.bodyType = RigidbodyType2D.Dynamic;
+            body.gravityScale = gravityScale;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation;
         }
 
         public void SetDead(bool value)
@@ -353,41 +375,42 @@ namespace Castlevania2D.Enemies
             bodyCollider.sharedMaterial = zeroFrictionMaterial;
         }
 
-        private void IgnoreStaticWorldColliders()
+        private bool TryPlaceIfGroundNearby(float maxDrop)
         {
-            if (bodyCollider == null)
+            if (body == null || bodyCollider == null)
             {
-                return;
+                return false;
             }
 
-            Collider2D[] colliders = Object.FindObjectsByType<Collider2D>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
-            for (int i = 0; i < colliders.Length; i++)
+            Physics2D.SyncTransforms();
+            Bounds bounds = bodyCollider.bounds;
+            Vector2 origin = new Vector2(bounds.center.x, bounds.min.y + 0.08f);
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, Mathf.Max(0.2f, maxDrop));
+            float bestY = float.NegativeInfinity;
+            bool found = false;
+            for (int i = 0; i < hits.Length; i++)
             {
-                Collider2D other = colliders[i];
-                if (other == null ||
-                    other == bodyCollider ||
-                    other.isTrigger ||
-                    other.transform == transform ||
-                    other.transform.IsChildOf(transform))
+                RaycastHit2D hit = hits[i];
+                if (!IsValidSpawnFloor(hit))
                 {
                     continue;
                 }
 
-                if (EnemyCollisionPassThrough2D.IsEnemyBody(other))
+                if (hit.point.y > bestY)
                 {
-                    continue;
+                    bestY = hit.point.y;
+                    found = true;
                 }
-
-                Rigidbody2D otherBody = other.attachedRigidbody;
-                if (otherBody != null && otherBody.bodyType == RigidbodyType2D.Dynamic)
-                {
-                    continue;
-                }
-
-                Physics2D.IgnoreCollision(bodyCollider, other, true);
             }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            body.position += new Vector2(0f, (bestY + 0.01f) - bounds.min.y);
+            Physics2D.SyncTransforms();
+            return true;
         }
 
         private bool TryPlaceColliderBottomOnGround(float probeDistance)

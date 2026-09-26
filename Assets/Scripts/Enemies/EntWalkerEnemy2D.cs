@@ -129,7 +129,10 @@ namespace Castlevania2D.Enemies
         private float lockedWalkWorldY;
         private bool hasLockedWalkWorldY;
         private bool capsuleGroundPlanted;
+        private bool skipStartGroundPlant;
         private bool ignoreLedgeStop;
+        private bool isFalling;
+        private float fallVelocity;
         private float sceneAuthoredFeetWorldY;
         private bool hasSceneAuthoredFeetWorldY;
         private float wallRecoveryTimerRemaining;
@@ -137,6 +140,8 @@ namespace Castlevania2D.Enemies
         private const float WallRecoveryDuration = 0.25f;
         private const float HorizontalCastSkin = 0.02f;
         private const float CapsuleGroundSkin = 0.02f;
+        private const float FallGravity = 42f;
+        private const float MaxFallSpeed = 32f;
 
         private static PhysicsMaterial2D zeroFrictionMaterial;
 
@@ -215,6 +220,31 @@ namespace Castlevania2D.Enemies
             PlantCapsuleOnGroundAndLock();
         }
 
+        /// <summary>
+        /// Portal spawn: plant only if solid floor is right under the feet; otherwise fall.
+        /// </summary>
+        public void PlaceOnNearbyGroundOrFall()
+        {
+            ApplyStandardBodyCollider();
+            Physics2D.SyncTransforms();
+            skipStartGroundPlant = true;
+            if (body == null)
+            {
+                return;
+            }
+
+            body.linearVelocity = Vector2.zero;
+            if (TryPlantIfGroundNearby(2f))
+            {
+                LockWalkHeightToCurrentScenePosition();
+                capsuleGroundPlanted = true;
+                return;
+            }
+
+            capsuleGroundPlanted = true;
+            BeginFall();
+        }
+
         /// <summary>Portal summons walk off cliffs instead of stopping at the ledge.</summary>
         public void MarkAsPortalSummon()
         {
@@ -242,7 +272,10 @@ namespace Castlevania2D.Enemies
         {
             ResolveTargetIfNeeded();
             // Scene Ents plant here; portal Ents already planted in PlaceOnGroundFromSpawn.
-            PlantCapsuleOnGroundAndLock();
+            if (!skipStartGroundPlant)
+            {
+                PlantCapsuleOnGroundAndLock();
+            }
         }
 
         private void Update()
@@ -302,6 +335,8 @@ namespace Castlevania2D.Enemies
             {
                 return;
             }
+
+            TickPortalFall();
 
             if (wallRecoveryTimerRemaining > 0f)
             {
@@ -1017,6 +1052,42 @@ namespace Castlevania2D.Enemies
         /// Thin center cast from above — full Capsule.Cast fails at the right portal where the
         /// wide capsule overlaps the cliff face (Cast distance 0 → Ent never lowers onto the floor).
         /// </summary>
+        private bool TryPlantIfGroundNearby(float maxDrop)
+        {
+            if (body == null || bodyCollider == null || !bodyCollider.enabled)
+            {
+                return false;
+            }
+
+            Physics2D.SyncTransforms();
+            Bounds bounds = bodyCollider.bounds;
+            Vector2 origin = new Vector2(bounds.center.x, bounds.min.y + 0.08f);
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, Mathf.Max(0.2f, maxDrop));
+            RaycastHit2D best = default;
+            float bestDistance = float.PositiveInfinity;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit2D candidate = hits[i];
+                if (!IsValidFloorGeometryHit(candidate) || candidate.distance >= bestDistance)
+                {
+                    continue;
+                }
+
+                best = candidate;
+                bestDistance = candidate.distance;
+            }
+
+            if (best.collider == null)
+            {
+                return false;
+            }
+
+            float targetBottomY = best.point.y + CapsuleGroundSkin;
+            body.position += new Vector2(0f, targetBottomY - bounds.min.y);
+            Physics2D.SyncTransforms();
+            return true;
+        }
+
         private bool TryPlantCapsuleBottomOnGround(float maxDistanceWorld)
         {
             if (body == null || bodyCollider == null || !bodyCollider.enabled)
@@ -1105,22 +1176,151 @@ namespace Castlevania2D.Enemies
             return TryPlantCapsuleBottomOnGround(probeDistanceWorld);
         }
 
-        private void MaintainWalkHeight()
+        private void TickPortalFall()
         {
             if (body == null)
             {
                 return;
             }
 
-            if (hasLockedWalkWorldY)
+            if (!isFalling && hasLockedWalkWorldY)
             {
-                Vector2 position = body.position;
-                if (Mathf.Abs(position.y - lockedWalkWorldY) > 0.0001f)
+                if (ignoreLedgeStop && !HasSolidFloorUnderFeet())
                 {
-                    position.y = lockedWalkWorldY;
-                    body.MovePosition(position);
+                    BeginFall();
+                }
+                else
+                {
+                    return;
                 }
             }
+
+            TickKinematicFall();
+        }
+
+        private void MaintainWalkHeight()
+        {
+            if (body == null || !hasLockedWalkWorldY || isFalling)
+            {
+                return;
+            }
+
+            Vector2 position = body.position;
+            if (Mathf.Abs(position.y - lockedWalkWorldY) > 0.0001f)
+            {
+                position.y = lockedWalkWorldY;
+                body.MovePosition(position);
+            }
+        }
+
+        private void BeginFall()
+        {
+            if (body == null)
+            {
+                return;
+            }
+
+            isFalling = true;
+            hasLockedWalkWorldY = false;
+            fallVelocity = Mathf.Max(fallVelocity, 6f);
+            body.bodyType = RigidbodyType2D.Kinematic;
+            body.gravityScale = 0f;
+            body.constraints = RigidbodyConstraints2D.FreezeRotation;
+        }
+
+        private void TickKinematicFall()
+        {
+            isFalling = true;
+            hasLockedWalkWorldY = false;
+            fallVelocity = Mathf.Min(MaxFallSpeed, fallVelocity + (FallGravity * Time.fixedDeltaTime));
+            Vector2 position = body.position;
+            float nextY = position.y - (fallVelocity * Time.fixedDeltaTime);
+            if (TryGetFallLandingY(position.x, position.y, position.y - nextY + 0.35f, out float floorY)
+                && nextY <= floorY + CapsuleGroundSkin)
+            {
+                position.y += floorY - GetCapsuleBottomY();
+                body.position = position;
+                Physics2D.SyncTransforms();
+                LockWalkHeightToCurrentScenePosition();
+                return;
+            }
+
+            position.y = nextY;
+            body.position = position;
+        }
+
+        private bool HasSolidFloorUnderFeet()
+        {
+            if (bodyCollider == null)
+            {
+                return false;
+            }
+
+            Bounds bounds = bodyCollider.bounds;
+            float half = Mathf.Max(0.12f, bounds.extents.x * 0.25f);
+            return HasSolidFloorAtX(bounds.center.x)
+                   || HasSolidFloorAtX(bounds.center.x - half)
+                   || HasSolidFloorAtX(bounds.center.x + half);
+        }
+
+        private bool HasSolidFloorAtX(float worldX)
+        {
+            if (bodyCollider == null)
+            {
+                return false;
+            }
+
+            const float lift = 0.18f;
+            Vector2 origin = new Vector2(worldX, bodyCollider.bounds.min.y + lift);
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, 0.45f + lift);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (IsValidFloorGeometryHit(hits[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryGetFallLandingY(float worldX, float fromY, float maxDrop, out float floorY)
+        {
+            floorY = fromY;
+            if (bodyCollider == null)
+            {
+                return false;
+            }
+
+            const float lift = 0.18f;
+            Vector2 origin = new Vector2(worldX, bodyCollider.bounds.min.y + lift);
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, Mathf.Max(0.2f, maxDrop) + lift);
+            float best = float.NegativeInfinity;
+            bool found = false;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit2D hit = hits[i];
+                if (!IsValidFloorGeometryHit(hit) || hit.point.y <= best)
+                {
+                    continue;
+                }
+
+                best = hit.point.y;
+                found = true;
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            floorY = best + CapsuleGroundSkin;
+            return true;
+        }
+
+        private float GetCapsuleBottomY()
+        {
+            return bodyCollider != null ? bodyCollider.bounds.min.y : body.position.y;
         }
 
         private float GetMoveDirection(float desiredDirection)
@@ -1257,6 +1457,8 @@ namespace Castlevania2D.Enemies
             body.constraints = RigidbodyConstraints2D.FreezeRotation;
             lockedWalkWorldY = body.position.y;
             hasLockedWalkWorldY = true;
+            isFalling = false;
+            fallVelocity = 0f;
         }
 
         private bool TryMoveHorizontally(float moveDirection, float stepDistance)
@@ -1274,7 +1476,11 @@ namespace Castlevania2D.Enemies
 
             Vector2 position = body.position;
             position.x += moveDirection * allowedDistance;
-            position.y = hasLockedWalkWorldY ? lockedWalkWorldY : position.y;
+            if (hasLockedWalkWorldY)
+            {
+                position.y = lockedWalkWorldY;
+            }
+
             body.MovePosition(position);
             body.linearVelocity = new Vector2(moveDirection * moveSpeed, 0f);
             return true;

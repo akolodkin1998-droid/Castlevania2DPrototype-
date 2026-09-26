@@ -1,3 +1,4 @@
+using Castlevania2D.Combat;
 using Castlevania2D.Health;
 using UnityEngine;
 
@@ -29,9 +30,8 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        hitCollider = GetComponent<Collider2D>();
-        hitCollider.isTrigger = true;
         health = GetComponent<Health>();
+        EnsureContactCapsule();
 
         if (spriteRenderer != null)
         {
@@ -41,8 +41,6 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
                 spriteRenderer.sprite = idleSprite;
             }
         }
-
-        SyncColliderToSprite();
     }
 
     private void OnEnable()
@@ -97,7 +95,6 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
             }
 
             spriteRenderer.sprite = attackSprites[attackFrameIndex];
-            SyncColliderToSprite();
         }
     }
 
@@ -129,7 +126,6 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
         if (idleSprite != null && spriteRenderer != null)
         {
             spriteRenderer.sprite = idleSprite;
-            SyncColliderToSprite();
         }
     }
 
@@ -146,7 +142,7 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
 
     private void TryStrikePlayer(Collider2D other)
     {
-        if (other == null)
+        if (!IsPlayerBodyCapsule(other))
         {
             return;
         }
@@ -176,7 +172,61 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
         attackDirection = 1;
         frameTimer = 0f;
         spriteRenderer.sprite = attackSprites[0];
-        SyncColliderToSprite();
+    }
+
+    private static bool IsPlayerBodyCapsule(Collider2D other)
+    {
+        if (other == null || other is not CapsuleCollider2D)
+        {
+            return false;
+        }
+
+        if (other.GetComponent<Hitbox2D>() != null)
+        {
+            return false;
+        }
+
+        string objectName = other.gameObject.name;
+        if (objectName.IndexOf("Attack", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || objectName.IndexOf("Hitbox", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return false;
+        }
+
+        return ResolvePlayerHealth(other) != null;
+    }
+
+    private void EnsureContactCapsule()
+    {
+        BoxCollider2D box = GetComponent<BoxCollider2D>();
+        CapsuleCollider2D capsule = GetComponent<CapsuleCollider2D>();
+        if (capsule == null)
+        {
+            capsule = gameObject.AddComponent<CapsuleCollider2D>();
+        }
+
+        capsule.enabled = true;
+        capsule.isTrigger = true;
+        if (idleSprite != null)
+        {
+            Bounds bounds = idleSprite.bounds;
+            capsule.size = bounds.size;
+            capsule.offset = bounds.center;
+            capsule.direction = CapsuleDirection2D.Vertical;
+        }
+        else if (box != null)
+        {
+            capsule.size = box.size;
+            capsule.offset = box.offset;
+            capsule.direction = CapsuleDirection2D.Vertical;
+        }
+
+        if (box != null)
+        {
+            box.enabled = false;
+        }
+
+        hitCollider = capsule;
     }
 
     private static Health ResolvePlayerHealth(Collider2D other)
@@ -205,22 +255,6 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
         return null;
     }
 
-    private void SyncColliderToSprite()
-    {
-        if (spriteRenderer == null || spriteRenderer.sprite == null)
-        {
-            return;
-        }
-
-        if (hitCollider is BoxCollider2D box)
-        {
-            Bounds bounds = spriteRenderer.sprite.bounds;
-            box.isTrigger = true;
-            box.size = bounds.size;
-            box.offset = bounds.center;
-        }
-    }
-
 #if UNITY_EDITOR
     public void EditorAssignSprites(Sprite idle, Sprite[] attack)
     {
@@ -236,7 +270,7 @@ public sealed class SnakeContactEnemy2D : MonoBehaviour
             spriteRenderer.sprite = idleSprite;
         }
 
-        SyncColliderToSprite();
+        EnsureContactCapsule();
     }
 #endif
 }

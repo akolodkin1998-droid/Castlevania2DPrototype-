@@ -107,6 +107,11 @@ namespace Castlevania2D.Loot
             {
                 player.AddComponent<Castlevania2D.Combat.SporeBagActivator2D>();
             }
+
+            if (player.GetComponent<PlayerManualLootPickup2D>() == null)
+            {
+                player.AddComponent<PlayerManualLootPickup2D>();
+            }
         }
 
         private static void RestoreOrGrantStartingLoot()

@@ -214,14 +214,14 @@ namespace Castlevania2D.Enemies
             var entWalker = unit.GetComponent<EntWalkerEnemy2D>();
             if (entWalker != null)
             {
-                entWalker.PlaceOnGroundFromSpawn();
+                entWalker.PlaceOnNearbyGroundOrFall();
                 entWalker.MarkAsPortalSummon();
             }
 
             var mushomorMovement = unit.GetComponent<MushomorMovement2D>();
             if (mushomorMovement != null)
             {
-                mushomorMovement.PlaceOnGroundFromSpawn();
+                mushomorMovement.PlaceOnNearbyGroundOrFall();
                 mushomorMovement.MarkAsPortalSummon();
             }
 

@@ -3,30 +3,27 @@ using UnityEngine;
 namespace Castlevania2D.Loot
 {
     /// <summary>
-    /// Physics drop that pops out, lands on terrain, and is collected on player contact.
+    /// Physics drop that pops out and lands on terrain.
+    /// Companions collect it; the player can also take it with F (no prompt).
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Collider2D))]
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class LootPickup2D : MonoBehaviour
     {
-        private static readonly Collider2D[] MagnetOverlapBuffer = new Collider2D[16];
-
         [SerializeField] private LootItemId itemId = LootItemId.Common;
         [SerializeField] private float collectDelay = 0.2f;
-        [SerializeField] private float magnetRadius = 1.6f;
-        [SerializeField] private float magnetSpeed = 10f;
         [SerializeField] private float lifetime = 45f;
 
         private Rigidbody2D body;
         private Collider2D bodyCollider;
         private float spawnTime;
         private bool collected;
-        private Transform magnetTarget;
-        private bool magnetActive;
-        private ContactFilter2D magnetOverlapFilter;
+        private Component reservedBy;
 
         public LootItemId ItemId => itemId;
+
+        public bool IsAvailable => !collected && gameObject.activeInHierarchy;
 
         public void Configure(LootItemId id, Sprite sprite, float scale, Vector2 popVelocity)
         {
@@ -39,18 +36,51 @@ namespace Castlevania2D.Loot
 
             transform.localScale = new Vector3(scale, scale, 1f);
             EnsureBody();
+            if (itemId == LootItemId.SporeBag)
+            {
+                SitSporeBagOnGround(renderer, sprite);
+            }
+
             body.linearVelocity = popVelocity;
+        }
+
+        private void SitSporeBagOnGround(SpriteRenderer renderer, Sprite sprite)
+        {
+            if (renderer != null && sprite != null)
+            {
+                renderer.sprite = SpriteWithBottomPivot(sprite);
+            }
+
+            if (bodyCollider is CircleCollider2D circle)
+            {
+                const float feetRadius = 0.12f;
+                circle.radius = feetRadius;
+                circle.offset = new Vector2(0f, feetRadius);
+            }
+        }
+
+        private static Sprite SpriteWithBottomPivot(Sprite source)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            Vector2 pivot = new Vector2(source.pivot.x / source.rect.width, 0.08f);
+            Sprite shifted = Sprite.Create(
+                source.texture,
+                source.rect,
+                pivot,
+                source.pixelsPerUnit,
+                0,
+                SpriteMeshType.FullRect);
+            shifted.name = source.name;
+            return shifted;
         }
 
         private void Awake()
         {
             EnsureBody();
-            magnetOverlapFilter = new ContactFilter2D
-            {
-                useTriggers = Physics2D.queriesHitTriggers,
-                useLayerMask = false,
-                useDepth = false
-            };
             spawnTime = Time.time;
         }
 
@@ -142,35 +172,6 @@ namespace Castlevania2D.Loot
             if (lifetime > 0f && Time.time - spawnTime >= lifetime)
             {
                 Destroy(gameObject);
-                return;
-            }
-
-            if (!CanCollect())
-            {
-                return;
-            }
-
-            if (!magnetActive)
-            {
-                TryFindMagnetTarget();
-                if (magnetActive && magnetTarget != null)
-                {
-                    IgnoreCollisionsWith(magnetTarget.gameObject);
-                }
-            }
-
-            if (magnetActive && magnetTarget != null)
-            {
-                Vector2 toPlayer = (Vector2)magnetTarget.position - body.position;
-                float distance = toPlayer.magnitude;
-                if (distance <= 0.18f)
-                {
-                    TryCollect(magnetTarget.gameObject);
-                    return;
-                }
-
-                body.gravityScale = 0f;
-                body.linearVelocity = toPlayer.normalized * magnetSpeed;
             }
         }
 
@@ -180,58 +181,95 @@ namespace Castlevania2D.Loot
             {
                 Physics2D.IgnoreCollision(bodyCollider, collision.collider, true);
             }
+        }
 
-            if (collected || !CanCollect())
+        public bool CanCollectNow()
+        {
+            return IsAvailable && Time.time - spawnTime >= collectDelay;
+        }
+
+        public bool IsReservedBy(Component collector)
+        {
+            return reservedBy != null && reservedBy && reservedBy == collector;
+        }
+
+        public bool TryReserve(Component collector)
+        {
+            if (!CanCollectNow() || collector == null)
             {
-                return;
+                return false;
             }
 
-            if (IsPlayer(collision.collider))
+            if (reservedBy != null && reservedBy && reservedBy != collector)
             {
-                TryCollect(collision.collider.gameObject);
+                return false;
+            }
+
+            reservedBy = collector;
+            return true;
+        }
+
+        public void ReleaseReserve(Component collector)
+        {
+            if (reservedBy == collector)
+            {
+                reservedBy = null;
             }
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        public bool TryCollectToPlayer()
         {
-            if (collected || !CanCollect())
+            if (!CanCollectNow())
             {
-                return;
+                return false;
             }
 
-            if (IsPlayer(other))
+            GameObject player = ResolvePlayer(null);
+            if (player == null)
             {
-                TryCollect(other.gameObject);
+                return false;
             }
+
+            TryCollect(player);
+            return collected;
         }
 
-        private bool CanCollect()
+        public static LootPickup2D FindNearest(
+            Vector2 origin,
+            float radius,
+            bool includeReserved,
+            Component reservedFor = null)
         {
-            return Time.time - spawnTime >= collectDelay;
-        }
-
-        private void TryFindMagnetTarget()
-        {
-            int hitCount = Physics2D.OverlapCircle(
-                body.position,
-                magnetRadius,
-                magnetOverlapFilter,
-                MagnetOverlapBuffer);
-
-            for (int i = 0; i < hitCount; i++)
+            LootPickup2D[] pickups = FindObjectsByType<LootPickup2D>(FindObjectsSortMode.None);
+            LootPickup2D nearest = null;
+            float best = radius * radius;
+            for (int i = 0; i < pickups.Length; i++)
             {
-                Collider2D hit = MagnetOverlapBuffer[i];
-                if (!IsPlayer(hit))
+                LootPickup2D pickup = pickups[i];
+                if (pickup == null || !pickup.CanCollectNow())
                 {
                     continue;
                 }
 
-                magnetTarget = hit.attachedRigidbody != null
-                    ? hit.attachedRigidbody.transform
-                    : hit.transform.root;
-                magnetActive = true;
-                return;
+                if (!includeReserved
+                    && pickup.reservedBy != null
+                    && pickup.reservedBy
+                    && pickup.reservedBy != reservedFor)
+                {
+                    continue;
+                }
+
+                float sqr = ((Vector2)pickup.transform.position - origin).sqrMagnitude;
+                if (sqr > best)
+                {
+                    continue;
+                }
+
+                best = sqr;
+                nearest = pickup;
             }
+
+            return nearest;
         }
 
         private static bool IsPlayer(Collider2D other)
@@ -277,6 +315,7 @@ namespace Castlevania2D.Loot
                 }
 
                 collected = true;
+                reservedBy = null;
                 quickAccess.AddHealingPotion(1);
                 Destroy(gameObject);
                 return;
@@ -294,6 +333,7 @@ namespace Castlevania2D.Loot
             }
 
             collected = true;
+            reservedBy = null;
             inventory.Add(itemId, 1);
             Destroy(gameObject);
         }

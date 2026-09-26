@@ -284,13 +284,14 @@ public static class SnakeEnemySetupEditor
         body.gravityScale = 0f;
         body.constraints = RigidbodyConstraints2D.FreezeAll;
 
-        var box = root.AddComponent<BoxCollider2D>();
-        box.isTrigger = true;
+        var capsule = root.AddComponent<CapsuleCollider2D>();
+        capsule.isTrigger = true;
+        capsule.direction = CapsuleDirection2D.Vertical;
         if (idle != null)
         {
             Bounds bounds = idle.bounds;
-            box.size = bounds.size;
-            box.offset = bounds.center;
+            capsule.size = bounds.size;
+            capsule.offset = bounds.center;
         }
 
         var health = root.AddComponent<Health>();
