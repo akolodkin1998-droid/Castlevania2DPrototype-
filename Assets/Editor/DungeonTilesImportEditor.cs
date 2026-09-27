@@ -9,7 +9,8 @@ using UnityEngine.Tilemaps;
 /// <summary>
 /// Imports the dungeon and loading sheets into separate sprite PNG and Tile asset folders.
 /// Underground-only: Tools → Castlevania 2D → Import Underground Tiles
-/// or Temp/import_underground_tiles.flag. Never edits scenes.
+/// Stone-only: Tools → Castlevania 2D → Import Stone Tiles
+/// or Temp/import_*_tiles.flag. Never edits scenes.
 /// </summary>
 [InitializeOnLoad]
 public static class DungeonTilesImportEditor
@@ -18,11 +19,15 @@ public static class DungeonTilesImportEditor
     private const string TextureFolder = "Assets/Art/Tiles/Dungeon";
     private const string UndergroundFlagPath = "Temp/import_underground_tiles.flag";
     private const string UndergroundResultPath = "Temp/import_underground_tiles_result.txt";
+    private const string StoneFlagPath = "Temp/import_stone_tiles.flag";
+    private const string StoneResultPath = "Temp/import_stone_tiles_result.txt";
 
     static DungeonTilesImportEditor()
     {
         EditorApplication.delayCall += TryImportUndergroundFromFlag;
+        EditorApplication.delayCall += TryImportStoneFromFlag;
         EditorApplication.update += PollUndergroundFlag;
+        EditorApplication.update += PollStoneFlag;
     }
 
     private static void PollUndergroundFlag()
@@ -36,6 +41,19 @@ public static class DungeonTilesImportEditor
         }
 
         TryImportUndergroundFromFlag();
+    }
+
+    private static void PollStoneFlag()
+    {
+        if (!File.Exists(StoneFlagPath) ||
+            EditorApplication.isCompiling ||
+            EditorApplication.isUpdating ||
+            EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryImportStoneFromFlag();
     }
 
     private static void TryImportUndergroundFromFlag()
@@ -60,6 +78,31 @@ public static class DungeonTilesImportEditor
             Debug.LogException(exception);
             Directory.CreateDirectory("Temp");
             File.WriteAllText(UndergroundResultPath, "FAIL\n" + exception);
+        }
+    }
+
+    private static void TryImportStoneFromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(StoneFlagPath))
+        {
+            return;
+        }
+
+        File.Delete(StoneFlagPath);
+        try
+        {
+            int created = ImportStone();
+            string summary = "Imported stone tiles only. Tile assets: " + created +
+                             ". Scene was not modified.";
+            Debug.Log(summary);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText(StoneResultPath, "OK\n" + summary);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText(StoneResultPath, "FAIL\n" + exception);
         }
     }
 
@@ -91,6 +134,18 @@ public static class DungeonTilesImportEditor
             fallbackSourcePaths: new[]
             {
                 @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Подъземье.png"
+            }),
+        new(
+            sourcePath: @"C:\Users\Bensh\.cursor\projects\c-Users-Bensh-Projects-Castlevania2DPrototype\assets\c__Users_Bensh_AppData_Roaming_Cursor_User_workspaceStorage_16bbec53c1b9f269b787014d3bf4b88b_images____________-df63c4f8-1425-4d72-9691-93632fa3d0b3.png",
+            textureAssetPath: TextureFolder + "/Stone_Tiles.png",
+            outputFolderName: "Stone",
+            sheetWidth: 256,
+            sheetHeight: 256,
+            cellSize: 32,
+            alwaysExportTiles: true,
+            fallbackSourcePaths: new[]
+            {
+                Path.GetFullPath(TextureFolder + "/Stone_Tiles.png")
             })
     };
 
@@ -106,6 +161,19 @@ public static class DungeonTilesImportEditor
         }
 
         Import();
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Import Stone Tiles")]
+    public static void ImportStoneMenu()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            EditorApplication.isPlaying = false;
+            EditorApplication.delayCall += () => ImportStone();
+            return;
+        }
+
+        ImportStone();
     }
 
     [MenuItem("Tools/Castlevania 2D/Import Underground Tiles")]
@@ -151,6 +219,20 @@ public static class DungeonTilesImportEditor
         EnsureFolders();
         SheetDefinition underground = GetSheet("Underground");
         int created = ImportSheet(underground);
+        AssetDatabase.SaveAssets();
+        return created;
+    }
+
+    public static int ImportStone()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return 0;
+        }
+
+        EnsureFolders();
+        SheetDefinition stone = GetSheet("Stone");
+        int created = ImportSheet(stone);
         AssetDatabase.SaveAssets();
         return created;
     }

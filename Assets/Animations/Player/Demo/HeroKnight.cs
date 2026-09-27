@@ -2,10 +2,11 @@ using UnityEngine;
 using System.Collections;
 using Castlevania2D.Combat;
 using Castlevania2D.Level;
+using Castlevania2D.Loot;
 using Castlevania2D.Player;
 using PlayerHealth = Castlevania2D.Health.Health;
 
-public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump, IRopeClimber {
+public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump, IRopeClimber, ILootPickupActor {
 
     [SerializeField] float      m_speed = 4.0f;
     [SerializeField] float      m_jumpForce = 7.5f;
@@ -80,6 +81,14 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     private ClimbableRope2D m_activeRope;
     private ClimbableRope2D m_touchingRope;
     private static readonly int ClimbState = Animator.StringToHash("Climb");
+    private static readonly int PickupState = Animator.StringToHash("Pickup");
+    private const float PickupCollectTime = 6f / 12f;
+    private bool m_pickingLoot;
+    private bool m_pickupEntered;
+    private bool m_lootCollected;
+    private float m_pickupCollectAt;
+    private float m_pickupStartedAt;
+    private LootPickup2D m_pendingLoot;
 
     public bool IsGrounded => m_grounded;
     public int FacingDirection => m_facingDirection;
@@ -227,6 +236,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         m_timeSinceAttack += Time.deltaTime;
         TickAttackHitbox();
         TickRoll();
+        TickLootPickup();
 
         if (m_climbing)
         {
@@ -253,7 +263,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         bool isOverheadBlocking = m_overheadBlockHeld;
 
         // Swap direction of sprite depending on walk direction
-        if (!m_rolling)
+        if (!m_rolling && !m_pickingLoot)
         {
             if (inputX > 0)
             {
@@ -294,7 +304,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         else if (!m_rolling)
         {
             bool slideDownWall = IsAirborneAgainstWall(inputX);
-            float walkSpeed = IsWalkStartupLocked() || slideDownWall ? 0f : inputX * m_speed;
+            float walkSpeed = m_pickingLoot || IsWalkStartupLocked() || slideDownWall ? 0f : inputX * m_speed;
             m_body2d.linearVelocity = new Vector2(walkSpeed, m_body2d.linearVelocity.y);
             SetWallSlideFriction(slideDownWall);
         }
@@ -321,6 +331,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
         bool overheadBlockPressed =
             !m_rolling &&
+            !m_pickingLoot &&
             ((Input.GetMouseButtonDown(1) && Input.GetKey(KeyCode.W)) ||
              (Input.GetKeyDown(KeyCode.W) && Input.GetMouseButton(1)));
 
@@ -337,7 +348,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_animator.ResetTrigger("Block");
         }
         //Attack
-        else if (Input.GetMouseButtonDown(0) && !m_rolling && !isOverheadBlocking)
+        else if (Input.GetMouseButtonDown(0) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
         {
             if (inAttack)
             {
@@ -349,7 +360,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             }
         }
         // Normal block: right mouse button only (no W).
-        else if (Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !isOverheadBlocking)
+        else if (Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
         {
             BeginBlock();
             m_overheadBlockHeld = false;
@@ -360,12 +371,12 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             EndBlock();
         }
         // Roll / belly slide. Hold Left Shift to keep sliding on frames 9-10.
-        else if (Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_isWallSliding && !isOverheadBlocking)
+        else if (Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_pickingLoot && !m_isWallSliding && !isOverheadBlocking)
         {
             BeginRoll();
         }
         //Jump
-        else if (Input.GetKeyDown("space") && m_grounded && !m_rolling && !isOverheadBlocking)
+        else if (Input.GetKeyDown("space") && m_grounded && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
         {
             ForceJump();
         }
@@ -375,7 +386,11 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         m_animator.SetBool("FrontBlock", m_blocking && !m_overheadBlockHeld);
 
         // Run / overhead-block walk (AnimState 1). Always update (not gated by attack/block edges).
-        if (Mathf.Abs(inputX) > Mathf.Epsilon)
+        if (m_pickingLoot)
+        {
+            m_animator.SetInteger("AnimState", 0);
+        }
+        else if (Mathf.Abs(inputX) > Mathf.Epsilon)
         {
             m_delayToIdle = 0.05f;
             m_animator.SetInteger("AnimState", 1);
@@ -390,7 +405,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
     public void ForceJump(float forceMultiplier = 1f)
     {
-        if (m_dead || m_body2d == null)
+        if (m_dead || m_pickingLoot || m_body2d == null)
         {
             return;
         }
@@ -444,6 +459,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         if (m_climbing
             || m_dead
             || m_rolling
+            || m_pickingLoot
             || m_grounded
             || m_touchingRope == null
             || m_mustLeaveRope
@@ -468,6 +484,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         }
 
         EndBlock();
+        EndLootPickup();
         m_queuedAttack = false;
         m_climbing = true;
         m_activeRope = rope;
@@ -485,6 +502,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         if (m_animator != null)
         {
             m_animator.ResetTrigger("Jump");
+            m_animator.ResetTrigger("Pickup");
             m_animator.ResetTrigger("Attack1");
             m_animator.ResetTrigger("Attack2");
             m_animator.ResetTrigger("Attack3");
@@ -758,6 +776,100 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         return hash == Attack1State || hash == Attack2State || hash == Attack3State;
     }
 
+    public bool TryPlayLootPickup(LootPickup2D loot)
+    {
+        if (loot == null
+            || m_dead
+            || !m_grounded
+            || m_rolling
+            || m_climbing
+            || m_pickingLoot
+            || IsInAttack()
+            || m_animator == null)
+        {
+            return false;
+        }
+
+        if (!loot.TryReserve(this))
+        {
+            return false;
+        }
+
+        EndBlock();
+        m_queuedAttack = false;
+        m_pickingLoot = true;
+        m_pickupEntered = false;
+        m_lootCollected = false;
+        m_pendingLoot = loot;
+        m_pickupStartedAt = Time.time;
+        m_pickupCollectAt = Time.time + PickupCollectTime;
+        m_animator.ResetTrigger("Pickup");
+        m_animator.SetTrigger("Pickup");
+        if (m_body2d != null)
+        {
+            m_body2d.linearVelocity = new Vector2(0f, m_body2d.linearVelocity.y);
+        }
+
+        return true;
+    }
+
+    private void TickLootPickup()
+    {
+        if (!m_pickingLoot)
+        {
+            return;
+        }
+
+        if (!m_lootCollected && m_pendingLoot != null && Time.time >= m_pickupCollectAt)
+        {
+            m_pendingLoot.TryCollectToPlayer();
+            m_lootCollected = true;
+        }
+
+        if (IsInPickup())
+        {
+            m_pickupEntered = true;
+        }
+        else if (m_pickupEntered || Time.time - m_pickupStartedAt > 0.35f)
+        {
+            EndLootPickup();
+        }
+    }
+
+    private bool IsInPickup()
+    {
+        if (m_animator == null)
+        {
+            return false;
+        }
+
+        int current = m_animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+        if (current == PickupState)
+        {
+            return true;
+        }
+
+        return m_animator.IsInTransition(0)
+            && m_animator.GetNextAnimatorStateInfo(0).shortNameHash == PickupState;
+    }
+
+    private void EndLootPickup()
+    {
+        if (m_pendingLoot != null && !m_lootCollected)
+        {
+            m_pendingLoot.TryCollectToPlayer();
+            m_lootCollected = true;
+        }
+
+        if (m_pendingLoot != null && m_pendingLoot)
+        {
+            m_pendingLoot.ReleaseReserve(this);
+        }
+
+        m_pendingLoot = null;
+        m_pickingLoot = false;
+    }
+
     private void BeginRoll()
     {
         m_queuedAttack = false;
@@ -1024,6 +1136,8 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             EndClimb();
         }
 
+        EndLootPickup();
+
         if (m_animator != null)
         {
             m_queuedAttack = false;
@@ -1038,6 +1152,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         EndBlock();
         EndRoll();
         EndClimb();
+        EndLootPickup();
         StopAttackHitbox();
 
         if (m_body2d == null)

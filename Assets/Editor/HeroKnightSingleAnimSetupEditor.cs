@@ -444,6 +444,27 @@ public static class HeroKnightSingleAnimSetupEditor
         }
     }
 
+    [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Pickup")]
+    public static void ApplyPickup()
+    {
+        ApplyNewCharacterPickup(openSpriteEditor: true);
+    }
+
+    public static void ApplyNewCharacterPickup(bool openSpriteEditor)
+    {
+        const string stripPath = "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_pickup.png";
+        AssetDatabase.ImportAsset(stripPath, ImportAssetOptions.ForceUpdate);
+        Sprite[] sprites = LoadStripSprites(stripPath);
+        WriteClip("HeroKnight_Pickup", sprites, 12, false);
+        RepairAnimatorWiring();
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(stripPath);
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
+    }
+
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Block")]
     public static void ApplyBlock()
     {
@@ -654,6 +675,7 @@ public static class HeroKnightSingleAnimSetupEditor
         { "Wall Slide", "HeroKnight_WallSlide" },
         { "Wall Slide Land", "HeroKnight_WallSlideLand" },
         { "Climb", "HeroKnight_Climb" },
+        { "Pickup", "HeroKnight_Pickup" },
     };
 
     [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Repair Animator Wiring")]

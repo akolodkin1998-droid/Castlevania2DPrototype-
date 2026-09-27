@@ -552,6 +552,34 @@
         "0017"
       ]
     },
+    "pickup": {
+      "guid": "b7d2c9e14a8f4b3c9e6d5a0b1c2d3e4f",
+      "clip": "HeroKnight_Pickup",
+      "frameCount": 10,
+      "cellWidth": 640,
+      "cellHeight": 512,
+      "globalCellWidth": 640,
+      "globalCellHeight": 512,
+      "ppu": 207,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.111413
+      },
+      "asset": "Assets/Art/Sprites/Characters/Player/HeroKnightAnim/HeroKnight_pickup.png",
+      "sourceRoot": "Новый персонаж/Подбор",
+      "sourceFrames": [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
+        "0006",
+        "0007",
+        "0008",
+        "0009",
+        "0010"
+      ]
+    },
     "climb": {
       "guid": "b8e07d2f4e6a9b3c5d7e1f0a2b48c1a4",
       "clip": "HeroKnight_Climb",

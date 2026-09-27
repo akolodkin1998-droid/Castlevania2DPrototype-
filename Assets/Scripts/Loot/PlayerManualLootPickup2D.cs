@@ -5,6 +5,11 @@ using UnityEngine;
 
 namespace Castlevania2D.Loot
 {
+    public interface ILootPickupActor
+    {
+        bool TryPlayLootPickup(LootPickup2D loot);
+    }
+
     /// <summary>
     /// Player can take grounded loot with F. No prompt is shown.
     /// </summary>
@@ -31,10 +36,19 @@ namespace Castlevania2D.Loot
             }
 
             LootPickup2D loot = LootPickup2D.FindNearest(transform.position, reach, true);
-            if (loot != null)
+            if (loot == null)
             {
-                loot.TryCollectToPlayer();
+                return;
             }
+
+            ILootPickupActor actor = GetComponent<ILootPickupActor>();
+            if (actor != null)
+            {
+                actor.TryPlayLootPickup(loot);
+                return;
+            }
+
+            loot.TryCollectToPlayer();
         }
     }
 }
