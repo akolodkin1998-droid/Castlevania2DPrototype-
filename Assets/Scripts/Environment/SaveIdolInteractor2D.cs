@@ -1,5 +1,7 @@
+using Castlevania2D.Input;
 using Castlevania2D.Loot;
 using Castlevania2D.Save;
+using Castlevania2D.UI;
 using UnityEngine;
 
 namespace Castlevania2D.Environment
@@ -10,36 +12,34 @@ namespace Castlevania2D.Environment
     {
         private const string PlayerObjectName = "Player_HeroKnight";
         private const string NoTearText = "Нужна Слеза Мары";
-        private const string PromptResourcePath = "UI/InteractPrompt_F";
+        private const string SaveHintId = "save_idol";
+        private const string SaveHintTitle = "Сохранение";
+        private const string SaveHintText =
+            "Здесь можно сохранить игру. Нажми F. Каждое сохранение расходует Слезу Мары — относись к сохранениям с умом.";
 
         [SerializeField] [Min(0.1f)] private float interactionDistance = 2f;
-        [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 2.55f, 0f);
-        [SerializeField] private Vector3 promptScale = new Vector3(0.48f, 0.48f, 1f);
-        [SerializeField] [Min(0.01f)] private float promptPopDuration = 0.22f;
-        [SerializeField] [Min(0f)] private float promptPopOffset = 0.2f;
+        [SerializeField] private Vector3 messageLocalPosition = new Vector3(0f, 3.4f, 0f);
         [SerializeField] [Min(0.1f)] private float messageDuration = 1.5f;
-        [SerializeField] private Sprite promptSprite;
 
         private SaveIdolAnimator2D idolAnimator;
         private Transform player;
         private PlayerLootInventory inventory;
-        private SpriteRenderer promptRenderer;
         private TextMesh messageText;
         private float nextPlayerSearchTime;
         private float messageVisibleUntil;
-        private bool promptWanted;
-        private float promptPop;
 
         private void Awake()
         {
             idolAnimator = GetComponent<SaveIdolAnimator2D>();
-            CreatePrompt();
+            DestroyLegacyPrompt();
+            CreateMessage();
+            EnsureSaveHint();
         }
 
         private void Update()
         {
             CachePlayerIfNeeded();
-            if (player == null || promptRenderer == null)
+            if (player == null)
             {
                 return;
             }
@@ -47,11 +47,13 @@ namespace Castlevania2D.Environment
             bool isNear = ((Vector2)(player.position - transform.position)).sqrMagnitude
                           <= interactionDistance * interactionDistance;
             SaveLoadSessionController controller = SaveLoadSessionController.Instance;
-            bool canInteract = isNear && controller != null && controller.CanInteract;
+            bool canInteract = isNear
+                               && controller != null
+                               && controller.CanInteract
+                               && !GameplayInputLock.IsLocked
+                               && !HintScrollUI.IsOpen
+                               && !DialogueBoxUI.IsOpen;
             bool showMessage = Time.unscaledTime < messageVisibleUntil;
-
-            promptWanted = canInteract && !showMessage;
-            TickPromptPop();
             SetMessageVisible(showMessage);
 
             if (showMessage)
@@ -77,7 +79,6 @@ namespace Castlevania2D.Environment
                     messageText.text = NoTearText;
                 }
 
-                promptWanted = false;
                 SetMessageVisible(true);
                 return;
             }
@@ -93,7 +94,6 @@ namespace Castlevania2D.Environment
                 return;
             }
 
-            promptWanted = false;
             SetMessageVisible(false);
         }
 
@@ -115,26 +115,34 @@ namespace Castlevania2D.Environment
             inventory = playerObject.GetComponent<PlayerLootInventory>();
         }
 
-        private void CreatePrompt()
+        private void DestroyLegacyPrompt()
         {
-            Sprite sprite = promptSprite != null
-                ? promptSprite
-                : Resources.Load<Sprite>(PromptResourcePath);
+            Transform existing = transform.Find("InteractionPrompt");
+            if (existing != null)
+            {
+                Destroy(existing.gameObject);
+            }
+        }
 
-            var promptObject = new GameObject("InteractionPrompt");
-            promptObject.transform.SetParent(transform, false);
-            promptObject.transform.localPosition = promptLocalPosition;
+        private void CreateMessage()
+        {
+            Transform existing = transform.Find("InteractionMessage");
+            GameObject messageObject = existing != null
+                ? existing.gameObject
+                : new GameObject("InteractionMessage", typeof(TextMesh));
+            if (existing == null)
+            {
+                messageObject.transform.SetParent(transform, false);
+            }
 
-            promptRenderer = promptObject.AddComponent<SpriteRenderer>();
-            promptRenderer.sprite = sprite;
-            promptRenderer.sortingOrder = 20;
-            ApplyPromptVisual(0f);
-
-            var messageObject = new GameObject("InteractionMessage", typeof(TextMesh));
-            messageObject.transform.SetParent(transform, false);
-            messageObject.transform.localPosition = promptLocalPosition + new Vector3(0f, 0.85f, 0f);
+            messageObject.transform.localPosition = messageLocalPosition;
 
             messageText = messageObject.GetComponent<TextMesh>();
+            if (messageText == null)
+            {
+                messageText = messageObject.AddComponent<TextMesh>();
+            }
+
             messageText.text = NoTearText;
             messageText.anchor = TextAnchor.LowerCenter;
             messageText.alignment = TextAlignment.Center;
@@ -147,30 +155,19 @@ namespace Castlevania2D.Environment
             messageObject.SetActive(false);
         }
 
-        private void TickPromptPop()
+        private void EnsureSaveHint()
         {
-            float target = promptWanted ? 1f : 0f;
-            float speed = promptPopDuration > 0.001f ? 1f / promptPopDuration : 1000f;
-            promptPop = Mathf.MoveTowards(promptPop, target, speed * Time.unscaledDeltaTime);
-            ApplyPromptVisual(promptPop * promptPop * (3f - 2f * promptPop));
-        }
-
-        private void ApplyPromptVisual(float eased)
-        {
-            if (promptRenderer == null)
+            ParchmentHintTrigger2D hint = GetComponent<ParchmentHintTrigger2D>();
+            if (hint == null)
             {
-                return;
+                hint = gameObject.AddComponent<ParchmentHintTrigger2D>();
             }
 
-            Transform promptTransform = promptRenderer.transform;
-            promptTransform.localScale = promptScale * eased;
-            promptTransform.localPosition = promptLocalPosition
-                                           + new Vector3(0f, (eased - 1f) * promptPopOffset, 0f);
-
-            Color color = Color.white;
-            color.a = eased;
-            promptRenderer.color = color;
-            promptRenderer.enabled = eased > 0.001f && promptRenderer.sprite != null;
+            hint.Configure(
+                SaveHintId,
+                SaveHintTitle,
+                SaveHintText,
+                interactionDistance);
         }
 
         private void SetMessageVisible(bool visible)
@@ -184,7 +181,6 @@ namespace Castlevania2D.Environment
 #if UNITY_EDITOR
         public void EditorAssignPrompt(Sprite sprite)
         {
-            promptSprite = sprite;
         }
 #endif
     }

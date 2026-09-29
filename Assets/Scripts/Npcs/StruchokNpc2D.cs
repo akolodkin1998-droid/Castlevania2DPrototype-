@@ -14,7 +14,10 @@ namespace Castlevania2D.Npcs
     public sealed class StruchokNpc2D : MonoBehaviour
     {
         private const string PlayerObjectName = "Player_HeroKnight";
-        private const string PromptResourcePath = "UI/InteractPrompt_F";
+        private const string CompanionHintId = "companion";
+        private const string CompanionHintTitle = "Спутник";
+        private const string CompanionHintText =
+            "Рядом прячется спутник. Нажми F, чтобы позвать его — он пойдёт за тобой и будет подбирать добычу.";
         private const float VisualScale = 1.25f;
         private const float BodyWidth = 0.32f;
         private const float BodyHeight = 0.64f;
@@ -52,8 +55,6 @@ namespace Castlevania2D.Npcs
         [SerializeField] [Min(0.05f)] private float minAirTimeToCopyJump = 0.12f;
         [SerializeField] [Min(0.25f)] private float vfxRate = 12f;
         [SerializeField] [Min(0.1f)] private float interactionDistance = 1.6f;
-        [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 1.15f, 0f);
-        [SerializeField] private Vector3 promptScale = new Vector3(0.48f, 0.48f, 1f);
         [SerializeField] [Min(0.1f)] private float followDistance = 1.8f;
         [SerializeField] [Min(0.05f)] private float slopeHuddleDistance = 0.4f;
         [SerializeField] [Min(0.1f)] private float followSpeed = 2.2f;
@@ -65,13 +66,13 @@ namespace Castlevania2D.Npcs
 
         private SpriteRenderer bodyRenderer;
         private SpriteRenderer vfxRenderer;
-        private SpriteRenderer promptRenderer;
         private Transform player;
         private Animator playerAnimator;
         private SpriteRenderer playerSprite;
         private Rigidbody2D playerBody;
         private CapsuleCollider2D playerCapsule;
         private CompanionLootCollector2D lootCollector;
+        private ParchmentHintTrigger2D meetingHint;
         private bool emerged;
         private bool following;
         private bool jumping;
@@ -107,7 +108,6 @@ namespace Castlevania2D.Npcs
         private float bodyTimer;
         private int vfxStep = -1;
         private float vfxTimer;
-        private float promptPop;
         private float nextPlayerSearchTime;
 
         public void AssignSets(
@@ -145,7 +145,8 @@ namespace Castlevania2D.Npcs
             }
 
             CreateVfxChild();
-            CreatePrompt();
+            DestroyLegacyPrompt();
+            EnsureMeetingHint();
             ApplyBodyFrame();
         }
 
@@ -157,7 +158,6 @@ namespace Castlevania2D.Npcs
                 TryPickup();
                 TickBodyAnimation();
                 TickVfx();
-                TickPrompt();
                 return;
             }
 
@@ -181,7 +181,6 @@ namespace Castlevania2D.Npcs
 
             TickBodyAnimation();
             TickVfx();
-            TickPrompt();
         }
 
         private void EnsureInvulnerable()
@@ -243,28 +242,28 @@ namespace Castlevania2D.Npcs
             vfxRenderer.enabled = false;
         }
 
-        private void CreatePrompt()
+        private void DestroyLegacyPrompt()
         {
             Transform existing = transform.Find("InteractionPrompt");
-            GameObject promptObject = existing != null ? existing.gameObject : new GameObject("InteractionPrompt");
-            if (existing == null)
+            if (existing != null)
             {
-                promptObject.transform.SetParent(transform, false);
+                Destroy(existing.gameObject);
+            }
+        }
+
+        private void EnsureMeetingHint()
+        {
+            meetingHint = GetComponent<ParchmentHintTrigger2D>();
+            if (meetingHint == null)
+            {
+                meetingHint = gameObject.AddComponent<ParchmentHintTrigger2D>();
             }
 
-            promptRenderer = promptObject.GetComponent<SpriteRenderer>();
-            if (promptRenderer == null)
-            {
-                promptRenderer = promptObject.AddComponent<SpriteRenderer>();
-            }
-
-            if (promptRenderer.sprite == null)
-            {
-                promptRenderer.sprite = Resources.Load<Sprite>(PromptResourcePath);
-            }
-
-            promptRenderer.sortingOrder = 20;
-            ApplyPromptVisual(0f);
+            meetingHint.Configure(
+                CompanionHintId,
+                CompanionHintTitle,
+                CompanionHintText,
+                interactionDistance);
         }
 
         private void TryPickup()
@@ -392,6 +391,11 @@ namespace Castlevania2D.Npcs
         {
             emerged = true;
             following = false;
+            if (meetingHint != null)
+            {
+                meetingHint.SetArmed(false);
+            }
+
             BeginSettleInPlace();
             PlayVfx();
             ApplyBodyFrame();
@@ -1771,34 +1775,6 @@ namespace Castlevania2D.Npcs
                 vfxRenderer.sprite = appearVfxFrames[vfxStep];
                 vfxRenderer.flipX = bodyRenderer != null && bodyRenderer.flipX;
             }
-        }
-
-        private void TickPrompt()
-        {
-            bool show = !emerged && player != null
-                        && ((Vector2)(player.position - transform.position)).sqrMagnitude
-                        <= interactionDistance * interactionDistance
-                        && !GameplayInputLock.IsLocked
-                        && !DialogueBoxUI.IsOpen;
-            float target = show ? 1f : 0f;
-            promptPop = Mathf.MoveTowards(promptPop, target, 5f * Time.unscaledDeltaTime);
-            ApplyPromptVisual(promptPop * promptPop * (3f - 2f * promptPop));
-        }
-
-        private void ApplyPromptVisual(float eased)
-        {
-            if (promptRenderer == null)
-            {
-                return;
-            }
-
-            Transform promptTransform = promptRenderer.transform;
-            promptTransform.localScale = promptScale * eased;
-            promptTransform.localPosition = promptLocalPosition + new Vector3(0f, (eased - 1f) * 0.2f, 0f);
-            Color color = Color.white;
-            color.a = eased;
-            promptRenderer.color = color;
-            promptRenderer.enabled = eased > 0.001f && promptRenderer.sprite != null;
         }
 
         private void CachePlayerIfNeeded()

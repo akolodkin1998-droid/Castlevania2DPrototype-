@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using Castlevania2D.Combat;
+using Castlevania2D.Input;
 using Castlevania2D.Level;
 using Castlevania2D.Loot;
 using Castlevania2D.Player;
@@ -207,7 +208,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             return;
         }
 
-        float inputX = Input.GetAxisRaw("Horizontal");
+        float inputX = GameplayInputLock.IsLocked ? 0f : Input.GetAxisRaw("Horizontal");
         if (!IsAirborneAgainstWall(inputX))
         {
             return;
@@ -256,10 +257,14 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_animator.SetBool("Grounded", m_grounded);
         }
 
-        TryMountFromTouch();
+        if (!GameplayInputLock.IsLocked)
+        {
+            TryMountFromTouch();
+        }
 
         // -- Handle input and movement --
-        float inputX = Input.GetAxisRaw("Horizontal");
+        bool inputLocked = GameplayInputLock.IsLocked;
+        float inputX = inputLocked ? 0f : Input.GetAxisRaw("Horizontal");
         bool isOverheadBlocking = m_overheadBlockHeld;
 
         // Swap direction of sprite depending on walk direction
@@ -330,12 +335,13 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         }
 
         bool overheadBlockPressed =
+            !inputLocked &&
             !m_rolling &&
             !m_pickingLoot &&
             ((Input.GetMouseButtonDown(1) && Input.GetKey(KeyCode.W)) ||
              (Input.GetKeyDown(KeyCode.W) && Input.GetMouseButton(1)));
 
-        if (m_overheadBlockHeld && (!Input.GetMouseButton(1) || !Input.GetKey(KeyCode.W)))
+        if (m_overheadBlockHeld && (inputLocked || !Input.GetMouseButton(1) || !Input.GetKey(KeyCode.W)))
         {
             EndBlock();
         }
@@ -348,7 +354,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_animator.ResetTrigger("Block");
         }
         //Attack
-        else if (Input.GetMouseButtonDown(0) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetMouseButtonDown(0) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
         {
             if (inAttack)
             {
@@ -360,23 +366,23 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             }
         }
         // Normal block: right mouse button only (no W).
-        else if (Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
         {
             BeginBlock();
             m_overheadBlockHeld = false;
             m_animator.SetTrigger("Block");
         }
-        else if (Input.GetMouseButtonUp(1) && !m_overheadBlockHeld)
+        else if (!inputLocked && Input.GetMouseButtonUp(1) && !m_overheadBlockHeld)
         {
             EndBlock();
         }
         // Roll / belly slide. Hold Left Shift to keep sliding on frames 9-10.
-        else if (Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_pickingLoot && !m_isWallSliding && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_pickingLoot && !m_isWallSliding && !isOverheadBlocking)
         {
             BeginRoll();
         }
         //Jump
-        else if (Input.GetKeyDown("space") && m_grounded && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetKeyDown("space") && m_grounded && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
         {
             ForceJump();
         }
@@ -528,13 +534,13 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             return;
         }
 
-        if (Input.GetKeyDown("space"))
+        if (!GameplayInputLock.IsLocked && Input.GetKeyDown("space"))
         {
             ForceJump();
             return;
         }
 
-        float inputY = Input.GetAxisRaw("Vertical");
+        float inputY = GameplayInputLock.IsLocked ? 0f : Input.GetAxisRaw("Vertical");
         m_activeRope.GetClimbRange(out float bottomY, out float topY);
         Vector3 position = transform.position;
         position.x = m_activeRope.GrabX;
