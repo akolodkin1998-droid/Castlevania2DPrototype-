@@ -41,6 +41,7 @@ namespace Castlevania2D.Loot
             healingPotionCount = 0;
             HasSnapshot = false;
             SuppressSceneBootstrap = false;
+            Castlevania2D.Npcs.CompanionFollowSession.Clear();
         }
 
         public static void ReplaceFromPlayerSave(PlayerSaveData source)

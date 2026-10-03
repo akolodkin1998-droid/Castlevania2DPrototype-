@@ -31,6 +31,12 @@ namespace Castlevania2D.Hub
 
         public static bool IsTalking { get; private set; }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ResetTalkFlag()
+        {
+            IsTalking = false;
+        }
+
         public event Action<int> ChoiceChosen;
 
         public void SetInteractionTuning(float distance, Vector3 promptPos)
@@ -69,6 +75,13 @@ namespace Castlevania2D.Hub
 
         private void Update()
         {
+            if (GetComponent<Castlevania2D.Npcs.StruchokNpc2D>() != null)
+            {
+                enabled = false;
+                CloseTalk();
+                return;
+            }
+
             CachePlayerIfNeeded();
             if (player == null || promptRenderer == null)
             {
@@ -112,15 +125,8 @@ namespace Castlevania2D.Hub
         public void CloseTalk()
         {
             talking = false;
-            if (IsTalking)
-            {
-                IsTalking = false;
-            }
-
-            if (DialogueBoxUI.IsOpen)
-            {
-                DialogueBoxUI.Ensure().Close();
-            }
+            IsTalking = false;
+            DialogueBoxUI.CloseIfOpen();
         }
 
         private void OnChoice(int index)

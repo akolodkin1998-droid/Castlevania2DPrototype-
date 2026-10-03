@@ -23,6 +23,11 @@ namespace Castlevania2D.Loot
 
         public LootItemId ItemId => itemId;
 
+        public void KeepUntilCollected()
+        {
+            lifetime = 0f;
+        }
+
         public bool IsAvailable => !collected && gameObject.activeInHierarchy;
 
         public void Configure(LootItemId id, Sprite sprite, float scale, Vector2 popVelocity)
@@ -329,7 +334,7 @@ namespace Castlevania2D.Loot
 
             if (inventory == null)
             {
-                return;
+                inventory = player.AddComponent<PlayerLootInventory>();
             }
 
             collected = true;
@@ -356,7 +361,13 @@ namespace Castlevania2D.Loot
                 }
             }
 
-            return GameObject.Find("Player_HeroKnight");
+            GameObject named = GameObject.Find("Player_HeroKnight");
+            if (named != null)
+            {
+                return named;
+            }
+
+            return GameObject.Find("HeroKnight");
         }
     }
 }

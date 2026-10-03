@@ -54,7 +54,7 @@ namespace Castlevania2D.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            owner?.ConfirmChoice(index);
+            owner?.TryAdvanceFromPointer();
         }
 
         private void ApplyColor()

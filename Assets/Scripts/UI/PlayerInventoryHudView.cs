@@ -382,6 +382,7 @@ namespace Castlevania2D.UI
                 LootItemId.MaraTear => maraTearSprite,
                 LootItemId.SporeBag => sporeBagSprite,
                 LootItemId.LikhoKey => likhoKeySprite,
+                LootItemId.CraneKey => likhoKeySprite,
                 _ => null,
             };
         }

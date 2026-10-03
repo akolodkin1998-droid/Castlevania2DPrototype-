@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Castlevania2D.Level
@@ -14,6 +15,7 @@ namespace Castlevania2D.Level
             "Interior",
             "FrontBeam",
             "HangingRope",
+            "GearBox",
         };
 
         [SerializeField] private WoodenElevatorWinch2D winch;
@@ -21,16 +23,20 @@ namespace Castlevania2D.Level
         [SerializeField] [Min(0.001f)] private float groundSkin = 0.03f;
 
         private static readonly RaycastHit2D[] GroundHits = new RaycastHit2D[16];
+        private static readonly Collider2D[] OverlapHits = new Collider2D[32];
 
         private Transform[] carParts;
         private BoxCollider2D floorCollider;
         private ContactFilter2D groundFilter;
+        private readonly HashSet<Collider2D> ignoredLandings = new HashSet<Collider2D>();
         private bool armed;
         private bool descending;
         private bool finished;
         private bool passengerInside;
         private Transform passenger;
         private Rigidbody2D passengerBody;
+        private WoodenElevatorCabin2D cabin;
+        private float traveledDown;
 
         public bool IsMoving { get; private set; }
         public bool IsArmed => armed;
@@ -44,10 +50,12 @@ namespace Castlevania2D.Level
             }
 
             armed = true;
-            if (passengerInside)
+            if (cabin == null)
             {
-                BeginDescent();
+                cabin = GetComponentInChildren<WoodenElevatorCabin2D>(true);
             }
+
+            cabin?.RefreshPassengerNow();
         }
 
         public void SetPassenger(Transform passengerRoot, bool inside)
@@ -89,11 +97,22 @@ namespace Castlevania2D.Level
                 useDepth = false
             };
             CacheCarParts();
+            cabin = GetComponentInChildren<WoodenElevatorCabin2D>(true);
         }
 
         private void FixedUpdate()
         {
-            if (!descending || !passengerInside)
+            if (armed && !descending && !finished)
+            {
+                if (cabin == null)
+                {
+                    cabin = GetComponentInChildren<WoodenElevatorCabin2D>(true);
+                }
+
+                cabin?.RefreshPassengerNow();
+            }
+
+            if (!descending)
             {
                 return;
             }
@@ -107,12 +126,17 @@ namespace Castlevania2D.Level
 
             if (allowed <= 0.0001f)
             {
-                FinishDescent();
+                if (traveledDown >= 0.75f)
+                {
+                    FinishDescent();
+                }
+
                 return;
             }
 
             MoveCar(-allowed);
-            if (allowed < requested - 0.0001f)
+            traveledDown += allowed;
+            if (allowed < requested - 0.0001f && traveledDown >= 0.75f)
             {
                 FinishDescent();
             }
@@ -126,6 +150,8 @@ namespace Castlevania2D.Level
             }
 
             CacheCarParts();
+            CaptureStartingSupports();
+            traveledDown = 0f;
             descending = true;
             SetMoving(true);
         }
@@ -135,6 +161,7 @@ namespace Castlevania2D.Level
             descending = false;
             finished = true;
             armed = false;
+            ignoredLandings.Clear();
             SetMoving(false);
         }
 
@@ -174,7 +201,7 @@ namespace Castlevania2D.Level
                 return;
             }
 
-            var found = new System.Collections.Generic.List<Transform>(CarChildNames.Length);
+            var found = new List<Transform>(CarChildNames.Length);
             for (int i = 0; i < CarChildNames.Length; i++)
             {
                 Transform child = transform.Find(CarChildNames[i]);
@@ -187,6 +214,33 @@ namespace Castlevania2D.Level
             carParts = found.ToArray();
             Transform floor = transform.Find("Floor");
             floorCollider = floor != null ? floor.GetComponent<BoxCollider2D>() : null;
+        }
+
+        private void CaptureStartingSupports()
+        {
+            ignoredLandings.Clear();
+            if (floorCollider == null)
+            {
+                return;
+            }
+
+            int overlapCount = floorCollider.Overlap(groundFilter, OverlapHits);
+            for (int i = 0; i < overlapCount; i++)
+            {
+                if (OverlapHits[i] != null)
+                {
+                    ignoredLandings.Add(OverlapHits[i]);
+                }
+            }
+
+            int hitCount = floorCollider.Cast(Vector2.down, groundFilter, GroundHits, 0.45f);
+            for (int i = 0; i < hitCount; i++)
+            {
+                if (GroundHits[i].collider != null)
+                {
+                    ignoredLandings.Add(GroundHits[i].collider);
+                }
+            }
         }
 
         private bool TryGetGroundDistance(float maxDistance, out float distance)
@@ -208,7 +262,12 @@ namespace Castlevania2D.Level
                     continue;
                 }
 
-                float untilContact = Mathf.Max(0f, hit.distance - groundSkin);
+                float untilContact = hit.distance - groundSkin;
+                if (untilContact <= 0f)
+                {
+                    continue;
+                }
+
                 if (!hitGround || untilContact < distance)
                 {
                     distance = untilContact;
@@ -221,7 +280,7 @@ namespace Castlevania2D.Level
 
         private bool ShouldIgnoreGroundHit(Collider2D hit)
         {
-            if (hit == floorCollider)
+            if (hit == floorCollider || ignoredLandings.Contains(hit))
             {
                 return true;
             }
@@ -234,6 +293,15 @@ namespace Castlevania2D.Level
 
             if (passenger != null
                 && (hitTransform == passenger || hitTransform.IsChildOf(passenger)))
+            {
+                return true;
+            }
+
+            Transform root = hit.attachedRigidbody != null
+                ? hit.attachedRigidbody.transform
+                : hitTransform.root;
+            if (root != null
+                && (root.CompareTag("Player") || root.name == "Player_HeroKnight"))
             {
                 return true;
             }

@@ -76,6 +76,20 @@ namespace Castlevania2D.Loot
             }
         }
 
+        public static Sprite SpriteFor(LootItemId itemId)
+        {
+            return itemId switch
+            {
+                LootItemId.Ent => Ent,
+                LootItemId.Potion => Potion,
+                LootItemId.MaraTear => MaraTear,
+                LootItemId.SporeBag => SporeBag,
+                LootItemId.LikhoKey => LikhoKey,
+                LootItemId.CraneKey => LikhoKey,
+                _ => Common,
+            };
+        }
+
         public static bool AreReady
         {
             get

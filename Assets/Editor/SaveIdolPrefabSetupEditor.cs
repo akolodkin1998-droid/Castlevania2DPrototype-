@@ -101,13 +101,19 @@ public static class SaveIdolPrefabSetupEditor
             {
                 interactor.EditorAssignPrompt(promptSprite);
             }
-            var saveFrames = new Sprite[FrameCount - 1];
-            for (int i = 1; i < FrameCount; i++)
+            var idleFrames = new Sprite[3];
+            for (int i = 0; i < idleFrames.Length; i++)
             {
-                saveFrames[i - 1] = sprites[i];
+                idleFrames[i] = sprites[i];
             }
 
-            animator.EditorAssignFrames(sprites[0], saveFrames);
+            var saveFrames = new Sprite[FrameCount - idleFrames.Length];
+            for (int i = 0; i < saveFrames.Length; i++)
+            {
+                saveFrames[i] = sprites[i + idleFrames.Length];
+            }
+
+            animator.EditorAssignFrames(idleFrames, saveFrames);
             PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             AssetDatabase.SaveAssets();
             return true;

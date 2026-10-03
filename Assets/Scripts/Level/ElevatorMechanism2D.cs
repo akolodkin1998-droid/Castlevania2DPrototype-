@@ -1,21 +1,25 @@
-using Castlevania2D.Combat;
+using Castlevania2D.Environment;
+using Castlevania2D.Loot;
 using UnityEngine;
 
 namespace Castlevania2D.Level
 {
     /// <summary>
-    /// Lift basket progression driven by shield-ricocheted stones landing while the player is in the basket zone.
-    /// Frame sequence: initial → landing 1 → landing 2 → landing 3.
-    /// Basket zone = BoxCollider2D Offset/Size on this object — edit them freely in the Inspector / Scene gizmo.
-    /// Optional per-landing anim frames play once on that hit, then hold frameSprites[landingCount].
+    /// Crane hoist: idle frame 1. Frames 2-9 play after the crate lever is pulled.
+    /// Key sits on the right roller and falls when hit by a stone.
     /// </summary>
-    [DisallowMultipleComponent]
-    [RequireComponent(typeof(SpriteRenderer))]
-    [RequireComponent(typeof(BoxCollider2D))]
-    public sealed class ElevatorMechanism2D : MonoBehaviour
-    {
-        [Header("Frame Sprites (0 = initial, then landings 1-3 hold)")]
-        [SerializeField] private Sprite[] frameSprites = new Sprite[4];
+        [DisallowMultipleComponent]
+        [RequireComponent(typeof(SpriteRenderer))]
+        public sealed class ElevatorMechanism2D : MonoBehaviour
+        {
+            private const string HoistResourcePrefix = "Environment/Crane/Hoist_";
+            private const string KeyResourcePath = "Items/Drop_LikhoKey";
+            private const string CraneKeyObjectName = "CraneKey";
+            private const float CrateSpriteUvX = 95f / 256f;
+            private const float CrateSpriteUvY = 1f - 168f / 256f;
+
+        [Header("Frame Sprites (0 = idle, then hoist 2-9)")]
+        [SerializeField] private Sprite[] frameSprites = new Sprite[9];
 
         [Header("Landing Animations (play once per hit, then hold)")]
         [SerializeField] private Sprite[] landing1AnimFrames;
@@ -27,16 +31,22 @@ namespace Castlevania2D.Level
         [SerializeField] private string playerObjectName = "Player_HeroKnight";
         [SerializeField] private float playerPresenceGraceSeconds = 0.35f;
 
-        [Header("Descent (siblings under LiftMechanism)")]
+        [Header("Hoist (siblings under LiftMechanism)")]
         [SerializeField] private Transform ropeTransform;
         [SerializeField] private Transform assemblyReferenceTransform;
-        [SerializeField] private float targetAssemblyWorldY = -38.5f;
+        [SerializeField] private Transform craneKeyTransform;
+        [SerializeField] private float targetAssemblyWorldY = -37.2f;
         [SerializeField] private float descentStepWorldY = 2f;
+        [SerializeField] private float hoistLiftDurationSeconds = 5f;
 
         private SpriteRenderer spriteRenderer;
         private SpriteRenderer ropeSpriteRenderer;
         private BoxCollider2D basketTrigger;
         private Transform playerRoot;
+        private Rigidbody2D playerBody;
+        private Collider2D playerCollider;
+        private Collider2D assemblyCollider;
+        private bool hoistCollisionIgnored;
         private int landingCount;
         private int playerOverlapCount;
         private float playerLastInsideTime = float.NegativeInfinity;
@@ -44,9 +54,20 @@ namespace Castlevania2D.Level
         private int landingAnimIndex;
         private float landingAnimElapsed;
         private Sprite[] activeLandingAnimFrames;
+        private bool hoistArmed;
+        private bool hoistLifting;
+        private float hoistLiftElapsed;
+        private float hoistLiftDuration;
+        private Vector3 hoistAssemblyStart;
+        private Vector3 hoistAssemblyEnd;
+        private Vector3 hoistRopeScaleStart;
+        private Vector3 hoistRopeScaleEnd;
+        private Vector3 hoistRopePosStart;
+        private Vector3 hoistRopePosEnd;
+        private float assemblyRestWorldX;
 
         public int LandingCount => landingCount;
-        public int MaxLandings => frameSprites != null ? frameSprites.Length - 1 : 0;
+        public int MaxLandings => 1;
         public float DescentStepWorldY => descentStepWorldY;
         public float AssemblyWorldY =>
             assemblyReferenceTransform != null ? assemblyReferenceTransform.position.y : 0f;
@@ -56,10 +77,27 @@ namespace Castlevania2D.Level
         private void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
-            basketTrigger = GetComponent<BoxCollider2D>();
-            EnsureBasketTriggerIsTriggerOnly();
+            targetAssemblyWorldY = -37.2f;
+            RemoveBasketCollider();
             CachePlayerRoot();
             CacheDescentTransforms();
+            ShowHoistParts();
+            PinAssemblyToAuthoredHorizontal();
+            LoadHoistSpritesIfNeeded();
+            EnsureCraneGadgets();
+            ApplyFrameSprite();
+        }
+
+        public void StartHoistFromLever()
+        {
+            if (hoistArmed || landingCount > 0)
+            {
+                return;
+            }
+
+            hoistArmed = true;
+            landingCount = 1;
+            BeginHoistLift();
             ApplyFrameSprite();
         }
 
@@ -68,23 +106,27 @@ namespace Castlevania2D.Level
             TickLandingAnimation();
         }
 
-        /// <summary>
-        /// Keeps collider as trigger, but never overwrites Offset/Size — those are authored in the Inspector.
-        /// </summary>
-        private void EnsureBasketTriggerIsTriggerOnly()
+        private void FixedUpdate()
         {
-            if (basketTrigger == null)
+            TickHoistLift();
+        }
+
+        private void RemoveBasketCollider()
+        {
+            BoxCollider2D[] boxes = GetComponents<BoxCollider2D>();
+            for (int i = 0; i < boxes.Length; i++)
             {
-                return;
+                boxes[i].enabled = false;
             }
 
-            basketTrigger.isTrigger = true;
+            basketTrigger = null;
         }
 
         private void CachePlayerRoot()
         {
             if (playerRoot != null)
             {
+                CachePlayerPhysics();
                 return;
             }
 
@@ -92,6 +134,25 @@ namespace Castlevania2D.Level
             if (playerObject != null)
             {
                 playerRoot = playerObject.transform;
+                CachePlayerPhysics();
+            }
+        }
+
+        private void CachePlayerPhysics()
+        {
+            if (playerRoot == null)
+            {
+                return;
+            }
+
+            if (playerBody == null)
+            {
+                playerBody = playerRoot.GetComponent<Rigidbody2D>();
+            }
+
+            if (playerCollider == null)
+            {
+                playerCollider = playerRoot.GetComponent<Collider2D>();
             }
         }
 
@@ -141,33 +202,6 @@ namespace Castlevania2D.Level
 
         private void TryRegisterStoneLanding(Collider2D other)
         {
-            if (!IsPlayerPresentInBasket())
-            {
-                return;
-            }
-
-            EnemyProjectile2D projectile = other.GetComponent<EnemyProjectile2D>()
-                ?? other.GetComponentInParent<EnemyProjectile2D>();
-            if (projectile == null || !projectile.IsPlayerReflected)
-            {
-                return;
-            }
-
-            CachePlayerRoot();
-            if (playerRoot != null && !projectile.WasReflectedBy(playerRoot.gameObject))
-            {
-                return;
-            }
-
-            if (landingCount >= MaxLandings)
-            {
-                return;
-            }
-
-            landingCount++;
-            ApplyFrameSprite();
-            ApplyDescentStep();
-            Destroy(projectile.gameObject);
         }
 
         private bool IsPlayerPresentInBasket()
@@ -217,6 +251,19 @@ namespace Castlevania2D.Level
             if (assemblyReferenceTransform == null && liftRoot != null)
             {
                 assemblyReferenceTransform = liftRoot.Find("AssemblyReference");
+            }
+
+            if (craneKeyTransform == null)
+            {
+                if (liftRoot != null)
+                {
+                    craneKeyTransform = liftRoot.Find(CraneKeyObjectName);
+                }
+
+                if (craneKeyTransform == null)
+                {
+                    craneKeyTransform = transform.Find(CraneKeyObjectName);
+                }
             }
 
             if (ropeTransform != null)
@@ -301,17 +348,350 @@ namespace Castlevania2D.Level
 
         private Sprite[] GetLandingAnimFrames(int landing)
         {
-            switch (landing)
+            if (landing != 1 || frameSprites == null || frameSprites.Length < 2)
             {
-                case 1:
-                    return landing1AnimFrames;
-                case 2:
-                    return landing2AnimFrames;
-                case 3:
-                    return landing3AnimFrames;
-                default:
-                    return null;
+                return null;
             }
+
+            int count = frameSprites.Length - 1;
+            var frames = new Sprite[count];
+            for (int i = 0; i < count; i++)
+            {
+                frames[i] = frameSprites[i + 1];
+            }
+
+            return frames;
+        }
+
+        private void LoadHoistSpritesIfNeeded()
+        {
+            var loaded = new Sprite[9];
+            bool any = false;
+            for (int i = 0; i < loaded.Length; i++)
+            {
+                loaded[i] = Resources.Load<Sprite>(HoistResourcePrefix + (i + 1).ToString("00"));
+                if (loaded[i] != null)
+                {
+                    any = true;
+                }
+            }
+
+            if (!any)
+            {
+                return;
+            }
+
+            frameSprites = loaded;
+            if (spriteRenderer != null && spriteRenderer.sprite == null && loaded[0] != null)
+            {
+                spriteRenderer.sprite = loaded[0];
+            }
+            else if (spriteRenderer != null && loaded[0] != null && landingCount <= 0)
+            {
+                spriteRenderer.sprite = loaded[0];
+            }
+        }
+
+        private void ShowHoistParts()
+        {
+            CacheDescentTransforms();
+            if (ropeTransform != null)
+            {
+                ropeTransform.gameObject.SetActive(true);
+            }
+
+            if (assemblyReferenceTransform != null)
+            {
+                assemblyReferenceTransform.gameObject.SetActive(true);
+            }
+        }
+
+        private void BeginHoistLift()
+        {
+            CacheDescentTransforms();
+            ShowHoistParts();
+            hoistLiftElapsed = 0f;
+            hoistLiftDuration = hoistLiftDurationSeconds > 0.1f ? hoistLiftDurationSeconds : 5f;
+            hoistLifting = true;
+            SetHoistPassengerCollision(true);
+
+            float liftDistance = 0f;
+            if (assemblyReferenceTransform != null)
+            {
+                Vector3 start = assemblyReferenceTransform.position;
+                start.x = assemblyRestWorldX != 0f ? assemblyRestWorldX : start.x;
+                hoistAssemblyStart = start;
+                hoistAssemblyEnd = new Vector3(start.x, targetAssemblyWorldY, start.z);
+                assemblyReferenceTransform.position = start;
+                liftDistance = hoistAssemblyEnd.y - hoistAssemblyStart.y;
+            }
+
+            if (ropeTransform == null || ropeSpriteRenderer == null || ropeSpriteRenderer.sprite == null)
+            {
+                return;
+            }
+
+            hoistRopeScaleStart = ropeTransform.localScale;
+            hoistRopePosStart = ropeTransform.localPosition;
+            hoistRopeScaleEnd = hoistRopeScaleStart;
+            hoistRopePosEnd = hoistRopePosStart;
+
+            float parentScaleY = ropeTransform.parent != null ? ropeTransform.parent.lossyScale.y : 1f;
+            float spriteHeight = ropeSpriteRenderer.sprite.bounds.size.y;
+            if (spriteHeight <= Mathf.Epsilon || parentScaleY <= Mathf.Epsilon)
+            {
+                return;
+            }
+
+            float deltaScaleY = liftDistance / (spriteHeight * parentScaleY);
+            float newScaleY = Mathf.Max(0.01f, hoistRopeScaleStart.y - deltaScaleY);
+            float appliedDeltaScaleY = hoistRopeScaleStart.y - newScaleY;
+            hoistRopeScaleEnd = new Vector3(hoistRopeScaleStart.x, newScaleY, hoistRopeScaleStart.z);
+            hoistRopePosEnd = hoistRopePosStart + new Vector3(0f, spriteHeight * appliedDeltaScaleY, 0f);
+        }
+
+        private void TickHoistLift()
+        {
+            if (!hoistLifting)
+            {
+                return;
+            }
+
+            hoistLiftElapsed += Time.deltaTime;
+            float t = hoistLiftDuration > 0.001f ? hoistLiftElapsed / hoistLiftDuration : 1f;
+            bool finished = t >= 1f;
+            if (finished)
+            {
+                t = 1f;
+                hoistLifting = false;
+            }
+
+            t = t * t * (3f - 2f * t);
+            if (assemblyReferenceTransform != null)
+            {
+                Vector3 previous = assemblyReferenceTransform.position;
+                Vector3 next = Vector3.Lerp(hoistAssemblyStart, hoistAssemblyEnd, t);
+                next.x = hoistAssemblyStart.x;
+                assemblyReferenceTransform.position = next;
+                CarryPassengerWithLog(next.y - previous.y);
+            }
+
+            if (ropeTransform != null)
+            {
+                ropeTransform.localScale = Vector3.Lerp(hoistRopeScaleStart, hoistRopeScaleEnd, t);
+                ropeTransform.localPosition = Vector3.Lerp(hoistRopePosStart, hoistRopePosEnd, t);
+            }
+
+            if (finished)
+            {
+                SetHoistPassengerCollision(false);
+                SnapPassengerOntoLog();
+                StopLandingAnimation();
+                ApplyHoldSprite();
+            }
+        }
+
+        private bool IsPassengerOnLog()
+        {
+            CachePlayerRoot();
+            if (playerRoot == null || assemblyReferenceTransform == null)
+            {
+                return false;
+            }
+
+            if (assemblyCollider == null)
+            {
+                assemblyCollider = assemblyReferenceTransform.GetComponent<Collider2D>();
+            }
+
+            Bounds bounds = assemblyCollider != null
+                ? assemblyCollider.bounds
+                : new Bounds(assemblyReferenceTransform.position, new Vector3(4f, 1f, 1f));
+
+            Vector3 playerPosition = playerRoot.position;
+            const float padX = 0.75f;
+            bool overLog = playerPosition.x >= bounds.min.x - padX && playerPosition.x <= bounds.max.x + padX;
+            return overLog && playerPosition.y >= bounds.min.y - 1.4f && playerPosition.y <= bounds.max.y + 3.5f;
+        }
+
+        private void CarryPassengerWithLog(float deltaY)
+        {
+            if (Mathf.Abs(deltaY) <= 0.00001f || !IsPassengerOnLog())
+            {
+                return;
+            }
+
+            if (playerBody != null)
+            {
+                playerBody.position += new Vector2(0f, deltaY);
+                Vector2 velocity = playerBody.linearVelocity;
+                if (velocity.y < 0f)
+                {
+                    velocity.y = 0f;
+                    playerBody.linearVelocity = velocity;
+                }
+            }
+            else
+            {
+                playerRoot.position += new Vector3(0f, deltaY, 0f);
+            }
+        }
+
+        private void SetHoistPassengerCollision(bool ignore)
+        {
+            CachePlayerRoot();
+            if (assemblyReferenceTransform != null && assemblyCollider == null)
+            {
+                assemblyCollider = assemblyReferenceTransform.GetComponent<Collider2D>();
+            }
+
+            if (playerCollider == null || assemblyCollider == null || hoistCollisionIgnored == ignore)
+            {
+                return;
+            }
+
+            Physics2D.IgnoreCollision(playerCollider, assemblyCollider, ignore);
+            hoistCollisionIgnored = ignore;
+        }
+
+        private void SnapPassengerOntoLog()
+        {
+            if (!IsPassengerOnLog() || assemblyCollider == null)
+            {
+                return;
+            }
+
+            float surfaceY = assemblyCollider.bounds.max.y;
+            float feetY = playerCollider != null ? playerCollider.bounds.min.y : playerRoot.position.y;
+            float lift = surfaceY - feetY + 0.02f;
+            if (lift <= 0f)
+            {
+                return;
+            }
+
+            if (playerBody != null)
+            {
+                playerBody.position += new Vector2(0f, lift);
+            }
+            else
+            {
+                playerRoot.position += new Vector3(0f, lift, 0f);
+            }
+        }
+
+        private void PinAssemblyToAuthoredHorizontal()
+        {
+            if (assemblyReferenceTransform == null)
+            {
+                return;
+            }
+
+            assemblyRestWorldX = assemblyReferenceTransform.position.x;
+        }
+
+        private void EnsureCraneGadgets()
+        {
+            CacheDescentTransforms();
+            if (craneKeyTransform == null)
+            {
+                CreateAuthoredKeyPart();
+            }
+            else
+            {
+                WireKeyPerch(craneKeyTransform.gameObject);
+            }
+
+            Transform crate = transform.Find("CraneCrate");
+            if (crate == null)
+            {
+                CreateCrateInspect();
+                crate = transform.Find("CraneCrate");
+            }
+
+            if (crate != null)
+            {
+                GearBoxInspect2D strayLift = crate.GetComponent<GearBoxInspect2D>();
+                if (strayLift != null)
+                {
+                    Destroy(strayLift);
+                }
+            }
+        }
+
+        private void CreateAuthoredKeyPart()
+        {
+            Transform liftRoot = transform.parent != null ? transform.parent : transform;
+            var keyObject = new GameObject(CraneKeyObjectName);
+            keyObject.transform.SetParent(liftRoot, false);
+            keyObject.transform.localPosition = transform.localPosition + new Vector3(-3.2f, 4f, 0f);
+            keyObject.transform.localRotation = Quaternion.identity;
+            keyObject.transform.localScale = new Vector3(0.45f, 0.45f, 1f);
+            craneKeyTransform = keyObject.transform;
+            WireKeyPerch(keyObject);
+        }
+
+        private void WireKeyPerch(GameObject keyObject)
+        {
+            Sprite keySprite = LootDropSprites.LikhoKey;
+            if (keySprite == null)
+            {
+                keySprite = Resources.Load<Sprite>(KeyResourcePath);
+            }
+
+            SpriteRenderer keyRenderer = keyObject.GetComponent<SpriteRenderer>();
+            if (keyRenderer == null)
+            {
+                keyRenderer = keyObject.AddComponent<SpriteRenderer>();
+            }
+
+            if (keyRenderer.sprite == null)
+            {
+                keyRenderer.sprite = keySprite;
+            }
+
+            keyRenderer.color = Color.white;
+            keyRenderer.sortingOrder = 30;
+            if (spriteRenderer != null)
+            {
+                keyRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            }
+
+            BoxCollider2D keyBox = keyObject.GetComponent<BoxCollider2D>();
+            if (keyBox == null)
+            {
+                keyBox = keyObject.AddComponent<BoxCollider2D>();
+                keyBox.size = new Vector2(1.2f, 1.2f);
+            }
+
+            keyBox.isTrigger = true;
+            if (keyObject.GetComponent<CraneKeyPerch2D>() == null)
+            {
+                keyObject.AddComponent<CraneKeyPerch2D>();
+            }
+        }
+
+        private void CreateCrateInspect()
+        {
+            var crateObject = new GameObject("CraneCrate", typeof(CraneCrateInspect2D));
+            crateObject.transform.SetParent(transform, false);
+            crateObject.transform.localPosition = SpriteUvToLocal(CrateSpriteUvX, CrateSpriteUvY);
+            CraneCrateInspect2D inspect = crateObject.GetComponent<CraneCrateInspect2D>();
+            inspect.BindHoist(this);
+        }
+
+        private Vector3 SpriteUvToLocal(float u, float v)
+        {
+            Sprite sprite = spriteRenderer != null ? spriteRenderer.sprite : null;
+            if (sprite == null)
+            {
+                return Vector3.zero;
+            }
+
+            Bounds bounds = sprite.bounds;
+            return new Vector3(
+                Mathf.Lerp(bounds.min.x, bounds.max.x, u),
+                Mathf.Lerp(bounds.min.y, bounds.max.y, v),
+                0f);
         }
 
         private bool TryStartLandingAnimation(int landing)
@@ -360,9 +740,16 @@ namespace Castlevania2D.Level
 
                 if (landingAnimIndex >= activeLandingAnimFrames.Length)
                 {
-                    StopLandingAnimation();
-                    ApplyHoldSprite();
-                    return;
+                    if (hoistLifting)
+                    {
+                        landingAnimIndex = 0;
+                    }
+                    else
+                    {
+                        StopLandingAnimation();
+                        ApplyHoldSprite();
+                        return;
+                    }
                 }
 
                 Sprite frame = activeLandingAnimFrames[landingAnimIndex];
@@ -380,7 +767,7 @@ namespace Castlevania2D.Level
                 return;
             }
 
-            int spriteIndex = Mathf.Clamp(landingCount, 0, frameSprites.Length - 1);
+            int spriteIndex = landingCount <= 0 ? 0 : frameSprites.Length - 1;
             Sprite hold = frameSprites[spriteIndex];
             if (hold == null && activeLandingAnimFrames != null && activeLandingAnimFrames.Length > 0)
             {
@@ -424,6 +811,7 @@ namespace Castlevania2D.Level
         public void ResetLandings()
         {
             landingCount = 0;
+            hoistArmed = false;
             StopLandingAnimation();
             ApplyFrameSprite();
         }
@@ -436,6 +824,7 @@ namespace Castlevania2D.Level
         {
             CacheDescentTransforms();
             landingCount = Mathf.Clamp(savedLandingCount, 0, MaxLandings);
+            hoistArmed = landingCount > 0;
             StopLandingAnimation();
 
             if (assemblyReferenceTransform != null)

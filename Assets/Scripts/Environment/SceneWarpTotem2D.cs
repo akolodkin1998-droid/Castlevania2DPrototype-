@@ -33,6 +33,12 @@ namespace Castlevania2D.Environment
 
         public static bool IsBusy { get; private set; }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ResetBusyFlag()
+        {
+            IsBusy = false;
+        }
+
         private void Awake()
         {
             animator = GetComponent<SceneWarpTotemAnimator2D>();

@@ -12,8 +12,15 @@ namespace Castlevania2D.Enemies
     [RequireComponent(typeof(SpriteRenderer))]
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Collider2D))]
-    public sealed class LikhoEnemy2D : MonoBehaviour
+    public sealed class LikhoEnemy2D : MonoBehaviour, IDamageBlocker
     {
+        public bool IsProjectileReflectActive => false;
+
+        public bool IsBlockingDamage(DamageInfo damage)
+        {
+            return true;
+        }
+
         private enum State
         {
             Sleep,

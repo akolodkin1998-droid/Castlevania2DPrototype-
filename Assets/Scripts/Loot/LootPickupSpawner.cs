@@ -43,6 +43,7 @@ namespace Castlevania2D.Loot
                 LootItemId.MaraTear => LootDropSprites.MaraTear,
                 LootItemId.SporeBag => LootDropSprites.SporeBag,
                 LootItemId.LikhoKey => LootDropSprites.LikhoKey,
+                LootItemId.CraneKey => LootDropSprites.LikhoKey,
                 _ => LootDropSprites.Common,
             };
         }
@@ -56,6 +57,7 @@ namespace Castlevania2D.Loot
                 LootItemId.MaraTear => 0.1f,
                 LootItemId.SporeBag => 0.48f,
                 LootItemId.LikhoKey => 1f / 3f,
+                LootItemId.CraneKey => 1f / 3f,
                 _ => 0.08f / 7f,
             };
         }

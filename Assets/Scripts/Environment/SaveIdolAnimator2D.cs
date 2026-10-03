@@ -4,23 +4,27 @@ using UnityEngine;
 namespace Castlevania2D.Environment
 {
     /// <summary>
-    /// Plays the save feedback animation. Persistence logic can call PlaySaveAnimation
-    /// after a successful save without depending on animation details.
+    /// Idle loops frames 1-3. Interaction plays the remaining Mara frames once.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class SaveIdolAnimator2D : MonoBehaviour
     {
         private const string ResourceFolder = "Environment/SaveIdol/";
-        private const int SaveFrameCount = 9;
+        private const int IdleFrameCount = 3;
+        private const int SaveFrameCount = 7;
 
-        [SerializeField] private Sprite idleSprite;
+        [SerializeField] private Sprite[] idleFrames;
         [SerializeField] private Sprite[] saveFrames;
+        [SerializeField] [Min(1f)] private float idleFrameRate = 6f;
         [SerializeField] [Min(1f)] private float frameRate = 12f;
 
         private SpriteRenderer spriteRenderer;
-        private int frameIndex;
-        private float frameTimer;
+        private int idleIndex;
+        private int idleDirection = 1;
+        private float idleTimer;
+        private int saveIndex;
+        private float saveTimer;
 
         public event Action SaveAnimationCompleted;
 
@@ -30,40 +34,29 @@ namespace Castlevania2D.Environment
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
             EnsureFramesLoaded();
-            ApplyIdleSprite();
+            ApplyIdleFrame();
         }
 
         private void OnDisable()
         {
             IsAnimating = false;
-            frameIndex = 0;
-            frameTimer = 0f;
-            ApplyIdleSprite();
+            saveIndex = 0;
+            saveTimer = 0f;
+            idleIndex = 0;
+            idleDirection = 1;
+            idleTimer = 0f;
+            ApplyIdleFrame();
         }
 
         private void Update()
         {
-            if (!IsAnimating)
+            if (IsAnimating)
             {
+                TickSaveAnimation();
                 return;
             }
 
-            float frameDuration = 1f / Mathf.Max(1f, frameRate);
-            frameTimer += Time.unscaledDeltaTime;
-
-            while (frameTimer >= frameDuration)
-            {
-                frameTimer -= frameDuration;
-                frameIndex++;
-
-                if (frameIndex >= saveFrames.Length)
-                {
-                    CompleteAnimation();
-                    return;
-                }
-
-                spriteRenderer.sprite = saveFrames[frameIndex];
-            }
+            TickIdleAnimation();
         }
 
         public bool PlaySaveAnimation()
@@ -80,51 +73,109 @@ namespace Castlevania2D.Environment
                 return false;
             }
 
-            frameIndex = 0;
-            frameTimer = 0f;
+            saveIndex = 0;
+            saveTimer = 0f;
             IsAnimating = true;
             spriteRenderer.sprite = saveFrames[0];
             return true;
         }
 
+        private void TickIdleAnimation()
+        {
+            if (idleFrames == null || idleFrames.Length == 0 || spriteRenderer == null)
+            {
+                return;
+            }
+
+            if (idleFrames.Length == 1)
+            {
+                ApplyIdleFrame();
+                return;
+            }
+
+            float frameDuration = 1f / Mathf.Max(1f, idleFrameRate);
+            idleTimer += Time.deltaTime;
+            while (idleTimer >= frameDuration)
+            {
+                idleTimer -= frameDuration;
+                AdvanceIdleFrame();
+                ApplyIdleFrame();
+            }
+        }
+
+        private void AdvanceIdleFrame()
+        {
+            idleIndex += idleDirection;
+            if (idleIndex >= idleFrames.Length - 1)
+            {
+                idleIndex = idleFrames.Length - 1;
+                idleDirection = -1;
+            }
+            else if (idleIndex <= 0)
+            {
+                idleIndex = 0;
+                idleDirection = 1;
+            }
+        }
+
+        private void TickSaveAnimation()
+        {
+            float frameDuration = 1f / Mathf.Max(1f, frameRate);
+            saveTimer += Time.unscaledDeltaTime;
+
+            while (saveTimer >= frameDuration)
+            {
+                saveTimer -= frameDuration;
+                saveIndex++;
+
+                if (saveIndex >= saveFrames.Length)
+                {
+                    CompleteAnimation();
+                    return;
+                }
+
+                spriteRenderer.sprite = saveFrames[saveIndex];
+            }
+        }
+
         private void CompleteAnimation()
         {
             IsAnimating = false;
-            frameIndex = 0;
-            frameTimer = 0f;
-            ApplyIdleSprite();
+            saveIndex = 0;
+            saveTimer = 0f;
+            idleIndex = 0;
+            idleDirection = 1;
+            idleTimer = 0f;
+            ApplyIdleFrame();
             SaveAnimationCompleted?.Invoke();
         }
 
-        private void ApplyIdleSprite()
+        private void ApplyIdleFrame()
         {
-            if (spriteRenderer != null && idleSprite != null)
+            if (spriteRenderer == null || idleFrames == null || idleFrames.Length == 0)
             {
-                spriteRenderer.sprite = idleSprite;
+                return;
+            }
+
+            int index = Mathf.Clamp(idleIndex, 0, idleFrames.Length - 1);
+            if (idleFrames[index] != null)
+            {
+                spriteRenderer.sprite = idleFrames[index];
             }
         }
 
         private void EnsureFramesLoaded()
         {
-            if (idleSprite == null)
+            if (!HasAllFrames(idleFrames, IdleFrameCount))
             {
-                idleSprite = Resources.Load<Sprite>(ResourceFolder + "Idol_01");
-            }
-
-            bool allSaveFramesAssigned = saveFrames != null && saveFrames.Length == SaveFrameCount;
-            if (allSaveFramesAssigned)
-            {
-                for (int i = 0; i < saveFrames.Length; i++)
+                idleFrames = new Sprite[IdleFrameCount];
+                for (int i = 0; i < IdleFrameCount; i++)
                 {
-                    if (saveFrames[i] == null)
-                    {
-                        allSaveFramesAssigned = false;
-                        break;
-                    }
+                    idleFrames[i] = Resources.Load<Sprite>(ResourceFolder + $"Idol_{i + 1:D2}");
                 }
             }
 
-            if (allSaveFramesAssigned)
+            if (HasAllFrames(saveFrames, SaveFrameCount))
             {
                 return;
             }
@@ -132,14 +183,32 @@ namespace Castlevania2D.Environment
             saveFrames = new Sprite[SaveFrameCount];
             for (int i = 0; i < SaveFrameCount; i++)
             {
-                saveFrames[i] = Resources.Load<Sprite>(ResourceFolder + $"Idol_{i + 2:D2}");
+                saveFrames[i] = Resources.Load<Sprite>(ResourceFolder + $"Idol_{i + IdleFrameCount + 1:D2}");
             }
         }
 
-#if UNITY_EDITOR
-        public void EditorAssignFrames(Sprite newIdleSprite, Sprite[] newSaveFrames)
+        private static bool HasAllFrames(Sprite[] frames, int expectedCount)
         {
-            idleSprite = newIdleSprite;
+            if (frames == null || frames.Length != expectedCount)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < frames.Length; i++)
+            {
+                if (frames[i] == null)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+#if UNITY_EDITOR
+        public void EditorAssignFrames(Sprite[] newIdleFrames, Sprite[] newSaveFrames)
+        {
+            idleFrames = newIdleFrames;
             saveFrames = newSaveFrames;
         }
 #endif

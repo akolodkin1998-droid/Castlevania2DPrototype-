@@ -11,6 +11,8 @@ namespace Castlevania2D.Save
     public sealed class SaveLoadSessionController : MonoBehaviour
     {
         private const string PrototypeSceneName = "Prototype";
+        private const string IntroSceneName = "Intro";
+        private const string TeremSceneName = "Terem";
         private const string MenuSceneName = "SaveLoadMenu";
         private const string MainMenuSceneName = "MainMenu";
         private const string PlayerObjectName = "Player_HeroKnight";
@@ -302,6 +304,11 @@ namespace Castlevania2D.Save
                 UnsubscribeFromMainMenu();
                 StartCoroutine(BindPlayerHealthRoutine());
             }
+            else if (scene.name == IntroSceneName || scene.name == TeremSceneName)
+            {
+                UnsubscribeFromMainMenu();
+                UnsubscribeFromPlayerHealth();
+            }
             else if (scene.name == MainMenuSceneName)
             {
                 UnsubscribeFromPlayerHealth();
@@ -432,7 +439,7 @@ namespace Castlevania2D.Save
             UnsubscribeFromMainMenu();
             PlayerInventorySession.Clear();
             AsyncOperation load =
-                SceneManager.LoadSceneAsync(PrototypeSceneName, LoadSceneMode.Single);
+                SceneManager.LoadSceneAsync(IntroSceneName, LoadSceneMode.Single);
             if (load == null)
             {
                 yield return fadeOverlay.FadeTo(0f, TransitionFadeDuration);

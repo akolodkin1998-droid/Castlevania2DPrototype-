@@ -20,6 +20,7 @@ namespace Castlevania2D.Environment
         private const string LockedPromptText = "Нужен ключ";
 
         public static bool IsOpen { get; private set; }
+        private static GearBoxInspect2D current;
 
         [SerializeField] [Min(0.1f)] private float interactionDistance = 2.2f;
         [SerializeField] private Vector3 promptLocalPosition = new Vector3(0f, 1.55f, 0f);
@@ -53,10 +54,35 @@ namespace Castlevania2D.Environment
         private bool overlayWanted;
         private float overlayPop;
         private bool lockedInput;
+        private bool unlocked;
         private bool leverPulled;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ResetOpenFlag()
+        {
+            current = null;
+            IsOpen = false;
+        }
+
+        public static void ForceClose()
+        {
+            if (current != null)
+            {
+                current.CloseOverlay();
+            }
+
+            IsOpen = false;
+        }
 
         private void Awake()
         {
+            current = this;
+            CraneCrateInspect2D strayCrane = GetComponent<CraneCrateInspect2D>();
+            if (strayCrane != null)
+            {
+                Destroy(strayCrane);
+            }
+
             if (interiorSprite == null)
             {
                 interiorSprite = Resources.Load<Sprite>(InteriorResourcePath);
@@ -84,6 +110,11 @@ namespace Castlevania2D.Environment
 
         private void OnDestroy()
         {
+            if (current == this)
+            {
+                current = null;
+            }
+
             if (IsOpen)
             {
                 UnlockInput();
@@ -120,9 +151,9 @@ namespace Castlevania2D.Environment
             }
             else
             {
-                promptWanted = canInspect && hasKey;
-                lockedPromptWanted = canInspect && !hasKey;
-                if (canInspect && hasKey && UnityEngine.Input.GetKeyDown(KeyCode.F))
+                promptWanted = canInspect && (hasKey || unlocked);
+                lockedPromptWanted = canInspect && !hasKey && !unlocked;
+                if (canInspect && (hasKey || unlocked) && UnityEngine.Input.GetKeyDown(KeyCode.F))
                 {
                     OpenOverlay();
                 }
@@ -173,6 +204,13 @@ namespace Castlevania2D.Environment
                 return;
             }
 
+            if (!unlocked && !ConsumeKey(LootItemId.LikhoKey))
+            {
+                return;
+            }
+
+            unlocked = true;
+            CraneCrateInspect2D.ForceClose();
             overlayWanted = true;
             IsOpen = true;
             LockInput();
@@ -436,10 +474,34 @@ namespace Castlevania2D.Environment
                 elevator = GetComponentInParent<WoodenElevator2D>();
             }
 
+            if (elevator == null)
+            {
+                elevator = transform.root.GetComponent<WoodenElevator2D>();
+            }
+
             if (elevator != null)
             {
                 elevator.ArmFromLever();
             }
+
+            CloseOverlay();
+        }
+
+        private bool ConsumeKey(LootItemId keyId)
+        {
+            if (player != null)
+            {
+                inventory = player.GetComponent<PlayerLootInventory>();
+            }
+
+            if (inventory == null || !inventory.TryRemove(keyId))
+            {
+                return false;
+            }
+
+            PlayerInventorySession.CaptureFromScene();
+            PlayerInventoryHudBootstrap.Refresh();
+            return true;
         }
 
         private void ApplyLeverVisual()

@@ -167,6 +167,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: 1
   collectDelay: 0.2
-  magnetRadius: 1.6
-  magnetSpeed: 10
   lifetime: 45

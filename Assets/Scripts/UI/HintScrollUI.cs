@@ -45,6 +45,22 @@ namespace Castlevania2D.UI
         public static bool IsOpen { get; private set; }
         public static bool IsJournalOpen { get; private set; }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ResetAfterSceneLoad()
+        {
+            CloseIfOpen();
+        }
+
+        public static void CloseIfOpen()
+        {
+            IsOpen = false;
+            IsJournalOpen = false;
+            if (instance != null)
+            {
+                instance.HideImmediate();
+            }
+        }
+
         public static HintScrollUI Ensure()
         {
             if (instance != null)

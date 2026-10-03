@@ -144,7 +144,7 @@ public static class LootDropSetupEditor
             $"Ent bonus: {EntPrefabPath} (Ent only)\n" +
             "Potion: 15% on all wired mobs\n" +
             "Physics: Dynamic Rigidbody2D + gravity + pop impulse\n" +
-            "Collect: contact / magnet → PlayerLootInventory\n" +
+            "Collect: companion or player F → PlayerLootInventory\n" +
             "Wired: Snake, Ent, Mushomor, Eagle (+ scene duplicates).\n" +
             "Skipped: Boss_Flower, Enemy_Wizard (portal mage).";
     }
@@ -253,8 +253,6 @@ public static class LootDropSetupEditor
         SerializedObject so = new SerializedObject(pickup);
         so.FindProperty("itemId").enumValueIndex = (int)itemId;
         so.FindProperty("collectDelay").floatValue = 0.2f;
-        so.FindProperty("magnetRadius").floatValue = 1.6f;
-        so.FindProperty("magnetSpeed").floatValue = 10f;
         so.ApplyModifiedPropertiesWithoutUndo();
 
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, prefabPath);

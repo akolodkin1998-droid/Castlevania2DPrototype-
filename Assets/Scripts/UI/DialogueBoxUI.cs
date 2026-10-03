@@ -11,23 +11,28 @@ namespace Castlevania2D.UI
     public sealed class DialogueBoxUI : MonoBehaviour
     {
         private const string ResourcePath = "UI/Dialogue/DialoguePanel";
+        private const string VaryagPortraitPath = "UI/Dialogue/VaryagPortrait";
+        private const string VaryagSpeakerName = "Варяг";
         private const int MaxChoices = 3;
 
-        private static readonly Vector2 PanelSize = new Vector2(720f, 402f);
         private static readonly Color NameColor = new Color(0.93f, 0.82f, 0.62f, 1f);
         private static readonly Color BodyColor = new Color(0.18f, 0.09f, 0.05f, 1f);
-        private const int TabInsetPixels = 48;
-        private static readonly RectInt NamePixels = new RectInt(131, 73, 126, 22);
-        private static readonly RectInt BodyPixels = new RectInt(100 + TabInsetPixels, 103, 423 - TabInsetPixels, 108);
-        private static readonly RectInt FirstChoicePixels = new RectInt(100 + TabInsetPixels, 215, 423 - TabInsetPixels, 24);
-        private const int ChoiceStrideY = 25;
-        private const float SpriteWidth = 688f;
-        private const float SpriteHeight = 384f;
+        private static readonly RectInt PortraitPixels = new RectInt(21, 295, 45, 45);
+        private static readonly RectInt NamePixels = new RectInt(19, 359, 50, 7);
+        private static readonly RectInt BodyPixels = new RectInt(78, 287, 595, 44);
+        private static readonly RectInt FirstChoicePixels = new RectInt(78, 335, 595, 11);
+        private const int ChoiceStrideY = 12;
+        private const float SpriteWidth = DialogueBoxPlacement2D.SpriteWidth;
+        private const float SpriteHeight = DialogueBoxPlacement2D.SpriteHeight;
 
         [SerializeField] private Image panelImage;
+        [SerializeField] private Image portraitImage;
         [SerializeField] private Text nameText;
         [SerializeField] private Text bodyText;
         [SerializeField] private DialogueChoiceLine[] choiceLines;
+
+        private const float TypeCharsPerSecond = 28f;
+        private const float HoldSpeedMultiplier = 5f;
 
         private static DialogueBoxUI instance;
 
@@ -35,8 +40,32 @@ namespace Castlevania2D.UI
         private int choiceCount;
         private int selectedIndex;
         private bool open;
+        private bool typing;
+        private string fullBody = string.Empty;
+        private int revealedCount;
+        private float typeTimer;
+        private string[] pendingChoices;
+        private int advanceFrame = -1;
+        private int suppressPointerAdvanceUntilFrame = -1;
 
-        public static bool IsOpen { get; private set; }
+        public static bool IsOpen => instance != null && instance.open;
+        public static bool IsTyping => instance != null && instance.typing;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ResetAfterSceneLoad()
+        {
+            CloseIfOpen();
+        }
+
+        public static void CloseIfOpen()
+        {
+            if (instance != null)
+            {
+                instance.HideImmediate();
+            }
+        }
+        public static event Action TypingStarted;
+        public static event Action TypingFinished;
 
         public static DialogueBoxUI Ensure()
         {
@@ -84,12 +113,17 @@ namespace Castlevania2D.UI
             if (instance == this)
             {
                 instance = null;
-                IsOpen = false;
                 GameplayInputLock.IsLocked = false;
             }
         }
 
-        public void Open(string speakerName, string body, string[] choices, Action<int> chosen)
+        public void Open(
+            string speakerName,
+            string body,
+            string[] choices,
+            Action<int> chosen,
+            Sprite portrait = null,
+            bool typewriter = false)
         {
             if (panelImage == null)
             {
@@ -102,30 +136,36 @@ namespace Castlevania2D.UI
 
             onChosen = chosen;
             nameText.text = speakerName ?? string.Empty;
-            bodyText.text = body ?? string.Empty;
-            choiceCount = choices == null ? 0 : Mathf.Min(MaxChoices, choices.Length);
-            selectedIndex = choiceCount > 0 ? 0 : -1;
+            fullBody = body ?? string.Empty;
+            pendingChoices = choices;
+            ApplyPortrait(speakerName, portrait);
+            typeTimer = 0f;
+            revealedCount = 0;
 
-            for (int i = 0; i < MaxChoices; i++)
+            bool useTypewriter = typewriter && fullBody.Length > 0;
+            typing = useTypewriter;
+            if (useTypewriter)
             {
-                bool visible = i < choiceCount;
-                choiceLines[i].gameObject.SetActive(visible);
-                if (!visible)
-                {
-                    continue;
-                }
-
-                choiceLines[i].SetText(choices[i]);
-                choiceLines[i].SetSelected(i == selectedIndex);
+                bodyText.text = string.Empty;
+                ShowChoices(null);
+            }
+            else
+            {
+                bodyText.text = fullBody;
+                ShowChoices(pendingChoices);
             }
 
             open = true;
-            IsOpen = true;
             GameplayInputLock.IsLocked = true;
             gameObject.SetActive(true);
             if (transform.parent != null)
             {
                 transform.parent.gameObject.SetActive(true);
+            }
+
+            if (useTypewriter)
+            {
+                TypingStarted?.Invoke();
             }
         }
 
@@ -146,9 +186,36 @@ namespace Castlevania2D.UI
             RefreshSelection();
         }
 
+        public void TryAdvance()
+        {
+            if (!open || Time.frameCount == advanceFrame)
+            {
+                return;
+            }
+
+            advanceFrame = Time.frameCount;
+            if (typing)
+            {
+                FinishTyping();
+                return;
+            }
+
+            ConfirmChoice(selectedIndex);
+        }
+
+        public void TryAdvanceFromPointer()
+        {
+            if (Time.frameCount <= suppressPointerAdvanceUntilFrame)
+            {
+                return;
+            }
+
+            TryAdvance();
+        }
+
         public void ConfirmChoice(int index)
         {
-            if (!open || index < 0 || index >= choiceCount)
+            if (!open || typing || index < 0 || index >= choiceCount)
             {
                 return;
             }
@@ -165,6 +232,19 @@ namespace Castlevania2D.UI
                 return;
             }
 
+            PlacePanel();
+
+            if (typing)
+            {
+                TickTypewriter();
+            }
+
+            if (UnityEngine.Input.GetMouseButtonUp(0) && typing)
+            {
+                FinishTyping();
+                suppressPointerAdvanceUntilFrame = Time.frameCount + 1;
+            }
+
             if (UnityEngine.Input.GetKeyDown(KeyCode.W) || UnityEngine.Input.GetKeyDown(KeyCode.UpArrow))
             {
                 MoveSelection(-1);
@@ -173,9 +253,10 @@ namespace Castlevania2D.UI
             {
                 MoveSelection(1);
             }
-            else if (UnityEngine.Input.GetKeyDown(KeyCode.F) || UnityEngine.Input.GetKeyDown(KeyCode.Return))
+            else if (UnityEngine.Input.GetKeyDown(KeyCode.F)
+                     || UnityEngine.Input.GetKeyDown(KeyCode.Return))
             {
-                ConfirmChoice(selectedIndex);
+                TryAdvance();
             }
             else if (UnityEngine.Input.GetKeyDown(KeyCode.Escape))
             {
@@ -204,8 +285,10 @@ namespace Castlevania2D.UI
 
         private void HideImmediate()
         {
+            typing = false;
+            fullBody = string.Empty;
+            pendingChoices = null;
             open = false;
-            IsOpen = false;
             GameplayInputLock.IsLocked = false;
             gameObject.SetActive(false);
             if (transform.parent != null)
@@ -214,14 +297,83 @@ namespace Castlevania2D.UI
             }
         }
 
+        private void TickTypewriter()
+        {
+            float speed = TypeCharsPerSecond;
+            if (UnityEngine.Input.GetMouseButton(0))
+            {
+                speed *= HoldSpeedMultiplier;
+            }
+
+            typeTimer += Time.unscaledDeltaTime;
+            float step = 1f / Mathf.Max(1f, speed);
+            while (typing && typeTimer >= step)
+            {
+                typeTimer -= step;
+                revealedCount++;
+                if (revealedCount >= fullBody.Length)
+                {
+                    bodyText.text = fullBody;
+                    if (!UnityEngine.Input.GetMouseButton(0))
+                    {
+                        FinishTyping();
+                    }
+
+                    return;
+                }
+
+                bodyText.text = fullBody.Substring(0, revealedCount);
+            }
+        }
+
+        private void FinishTyping()
+        {
+            if (!typing)
+            {
+                return;
+            }
+
+            typing = false;
+            bodyText.text = fullBody;
+            ShowChoices(pendingChoices);
+            TypingFinished?.Invoke();
+        }
+
+        private void ShowChoices(string[] choices)
+        {
+            choiceCount = choices == null ? 0 : Mathf.Min(MaxChoices, choices.Length);
+            selectedIndex = choiceCount > 0 ? 0 : -1;
+
+            for (int i = 0; i < MaxChoices; i++)
+            {
+                bool visible = i < choiceCount;
+                choiceLines[i].gameObject.SetActive(visible);
+                if (!visible)
+                {
+                    continue;
+                }
+
+                choiceLines[i].SetText(choices[i]);
+                choiceLines[i].SetSelected(i == selectedIndex);
+            }
+        }
+
         private void PlacePanel()
         {
             RectTransform panelRect = GetComponent<RectTransform>();
-            panelRect.anchorMin = new Vector2(0.5f, 0f);
-            panelRect.anchorMax = new Vector2(0.5f, 0f);
-            panelRect.pivot = new Vector2(0.5f, 0f);
-            panelRect.sizeDelta = PanelSize;
-            panelRect.anchoredPosition = new Vector2(0f, 20f);
+            DialogueBoxPlacement2D placement = DialogueBoxPlacement2D.Current;
+            if (placement == null)
+            {
+                placement = FindFirstObjectByType<DialogueBoxPlacement2D>();
+            }
+
+            if (placement != null)
+            {
+                placement.Apply(panelRect);
+                return;
+            }
+
+            DialogueBoxPlacement2D.FitSprite(panelRect, 0f, 1f, 0f, 1f);
         }
 
         private void Build()
@@ -230,7 +382,7 @@ namespace Castlevania2D.UI
 
             panelImage = GetComponent<Image>();
             panelImage.raycastTarget = true;
-            Sprite sprite = Resources.Load<Sprite>(ResourcePath);
+            Sprite sprite = LoadBoxSprite();
             if (sprite != null)
             {
                 panelImage.sprite = sprite;
@@ -243,7 +395,11 @@ namespace Castlevania2D.UI
             }
 
             Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            nameText = CreateLabel("SpeakerName", transform, font, 18, FontStyle.Bold, NameColor, TextAnchor.MiddleLeft);
+            portraitImage = CreatePortrait(transform);
+            nameText = CreateLabel("SpeakerName", transform, font, 14, FontStyle.Bold, NameColor, TextAnchor.MiddleCenter);
+            nameText.resizeTextForBestFit = true;
+            nameText.resizeTextMinSize = 8;
+            nameText.resizeTextMaxSize = 16;
             PlaceOnPanel(nameText.rectTransform, NamePixels);
 
             bodyText = CreateLabel("Body", transform, font, 20, FontStyle.Normal, BodyColor, TextAnchor.UpperLeft);
@@ -280,6 +436,41 @@ namespace Castlevania2D.UI
             DialogueChoiceLine line = go.GetComponent<DialogueChoiceLine>();
             line.Bind(this, index, label);
             return line;
+        }
+
+        private void ApplyPortrait(string speakerName, Sprite overrideSprite)
+        {
+            if (portraitImage == null)
+            {
+                return;
+            }
+
+            Sprite sprite = overrideSprite;
+            if (sprite == null && string.Equals(speakerName, VaryagSpeakerName, StringComparison.Ordinal))
+            {
+                sprite = Resources.Load<Sprite>(VaryagPortraitPath);
+            }
+
+            portraitImage.sprite = sprite;
+            portraitImage.enabled = sprite != null;
+            if (sprite != null)
+            {
+                portraitImage.preserveAspect = true;
+            }
+        }
+
+        private Image CreatePortrait(Transform parent)
+        {
+            var go = new GameObject("Portrait", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            Image image = go.GetComponent<Image>();
+            image.sprite = Resources.Load<Sprite>(VaryagPortraitPath);
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            image.color = Color.white;
+            PlaceOnPanel(image.rectTransform, PortraitPixels);
+            image.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            return image;
         }
 
         private static Text CreateLabel(
@@ -324,6 +515,11 @@ namespace Castlevania2D.UI
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+        }
+
+        private static Sprite LoadBoxSprite()
+        {
+            return Resources.Load<Sprite>(ResourcePath);
         }
 
         private static void EnsureEventSystem()

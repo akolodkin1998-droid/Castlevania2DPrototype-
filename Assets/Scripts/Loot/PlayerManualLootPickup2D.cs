@@ -15,7 +15,7 @@ namespace Castlevania2D.Loot
     /// </summary>
     public sealed class PlayerManualLootPickup2D : MonoBehaviour
     {
-        [SerializeField] [Min(0.1f)] private float reach = 1.8f;
+        [SerializeField] [Min(0.1f)] private float reach = 2.4f;
 
         private void Update()
         {
@@ -42,13 +42,11 @@ namespace Castlevania2D.Loot
             }
 
             ILootPickupActor actor = GetComponent<ILootPickupActor>();
-            if (actor != null)
+            actor?.TryPlayLootPickup(loot);
+            if (loot != null)
             {
-                actor.TryPlayLootPickup(loot);
-                return;
+                loot.TryCollectToPlayer();
             }
-
-            loot.TryCollectToPlayer();
         }
     }
 }

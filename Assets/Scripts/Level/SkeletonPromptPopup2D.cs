@@ -10,15 +10,15 @@ namespace Castlevania2D.Level
     [DisallowMultipleComponent]
     public sealed class SkeletonPromptPopup2D : MonoBehaviour
     {
-        private const string HintId = "skeleton";
-        private const string HintTitle = "Отбить предмет";
+        private const string HintId = "crane-key";
+        private const string HintTitle = "Сбить ключ";
         private const string DefaultHintText =
-            "Иногда нужно отбить предмет. Нажми W + ПКМ — так можно закрыться от камня сверху и забросить его в корзину.";
+            "На катушке журавля лежит ключ. Нажми W + ПКМ — закройся сверху и отбей камень, чтобы сбить ключ.";
 
         [Header("Ground Line")]
-        [SerializeField] private Vector2 lineCenter = new Vector2(19.7f, -37.2f);
-        [SerializeField] private float lineHalfWidth = 1.4f;
-        [SerializeField] private float lineHalfHeight = 0.6f;
+        [SerializeField] private Vector2 lineCenter = new Vector2(22.8f, -37.2f);
+        [SerializeField] private float lineHalfWidth = 2.6f;
+        [SerializeField] private float lineHalfHeight = 1.2f;
 
         [Header("Hint")]
         [SerializeField] [TextArea(3, 8)] private string hintText = DefaultHintText;
@@ -28,9 +28,35 @@ namespace Castlevania2D.Level
 
         private Transform playerRoot;
 
+        private void Awake()
+        {
+            hintText = DefaultHintText;
+            BindToCraneGround();
+        }
+
         private void Start()
         {
+            BindToCraneGround();
             CachePlayerRoot();
+        }
+
+        private void BindToCraneGround()
+        {
+            float craneX = 22.8f;
+            GameObject crane = GameObject.Find("MechanismFrame");
+            if (crane == null)
+            {
+                crane = GameObject.Find("LiftMechanism");
+            }
+
+            if (crane != null)
+            {
+                craneX = crane.transform.position.x;
+            }
+
+            lineCenter = new Vector2(craneX, -37.2f);
+            lineHalfWidth = 2.6f;
+            lineHalfHeight = 1.2f;
         }
 
         private void Update()

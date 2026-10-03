@@ -533,6 +533,7 @@ public static class ElevatorSetupEditor
             if (candidateStem.EndsWith(digits, StringComparison.Ordinal)
                 && (candidateStem.IndexOf("Лифт", StringComparison.OrdinalIgnoreCase) >= 0
                     || candidateStem.IndexOf("Lift", StringComparison.OrdinalIgnoreCase) >= 0
+                    || candidateStem.IndexOf("Журавль", StringComparison.OrdinalIgnoreCase) >= 0
                     || candidateStem.EndsWith("_" + digits, StringComparison.Ordinal)))
             {
                 return path;

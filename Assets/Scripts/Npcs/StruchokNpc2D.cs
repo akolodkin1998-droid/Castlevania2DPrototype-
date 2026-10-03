@@ -109,6 +109,9 @@ namespace Castlevania2D.Npcs
         private int vfxStep = -1;
         private float vfxTimer;
         private float nextPlayerSearchTime;
+        private int sceneArriveSnapFrames;
+
+        private bool ownsShiftedSprites;
 
         public void AssignSets(
             Sprite[] hideFrames,
@@ -118,23 +121,82 @@ namespace Castlevania2D.Npcs
             Sprite[] pickupFrames = null,
             Sprite[] jumpSet = null)
         {
+            ReleaseOwnedSprites();
             hideIdleFrames = hideFrames;
             followIdleFrames = OffsetSpritesDown(followFrames, 20f);
             followWalkFrames = OffsetSpritesDown(walkFrames, 20f);
             appearVfxFrames = OffsetSpritesDown(vfxFrames, 20f);
             lootPickupFrames = OffsetSpritesDown(pickupFrames, 20f);
             jumpFrames = OffsetSpritesDown(jumpSet, 20f);
+            ownsShiftedSprites = true;
             followWalkRate = 16f;
             followIdleRate = 8f;
             lootPickupRate = 20f;
             lootHuntSpeed = 8f;
             combatLootSpeed = 8f;
+            if (bodyRenderer == null)
+            {
+                bodyRenderer = GetComponent<SpriteRenderer>();
+            }
+
+            if (bodyRenderer != null)
+            {
+                bodyRenderer.enabled = true;
+            }
+
             ApplyBodyFrame();
+        }
+
+        public void ForceEmerged()
+        {
+            emerged = true;
+            following = false;
+            if (meetingHint != null)
+            {
+                meetingHint.SetArmed(false);
+            }
+
+            HintJournal.TryAdd(CompanionHintId, CompanionHintTitle, CompanionHintText);
+            ApplyBodyFrame();
+        }
+
+        public void ResumeFollowingPlayer()
+        {
+            player = null;
+            nextPlayerSearchTime = 0f;
+            jumping = false;
+            falling = false;
+            fallSpeed = 0f;
+            inCombat = false;
+            returningToPark = false;
+            pickingLoot = false;
+            waitingForPlayerLanding = false;
+            wasPlayerGrounded = true;
+            nextSeamJumpTime = Time.time + 1f;
+            sceneArriveSnapFrames = 0;
+            ForceEmerged();
+            settleInPlace = false;
+            following = true;
+            bodyStep = 0;
+            bodyTimer = 0f;
+            CachePlayerIfNeeded();
+            PlaceBesidePlayerIfPossible();
+            ApplyBodyFrame();
+        }
+
+        public void SnapBesidePlayerNow()
+        {
+            ResumeFollowingPlayer();
         }
 
         private void Awake()
         {
             bodyRenderer = GetComponent<SpriteRenderer>();
+            if (bodyRenderer != null)
+            {
+                bodyRenderer.enabled = true;
+            }
+
             transform.localScale = new Vector3(VisualScale, VisualScale, 1f);
             EnsureInvulnerable();
             DisableConflictingBehaviours();
@@ -147,12 +209,23 @@ namespace Castlevania2D.Npcs
             CreateVfxChild();
             DestroyLegacyPrompt();
             EnsureMeetingHint();
+            if (CompanionFollowSession.Recruited)
+            {
+                ForceEmerged();
+            }
+
             ApplyBodyFrame();
+        }
+
+        private void OnDestroy()
+        {
+            ReleaseOwnedSprites();
         }
 
         private void Update()
         {
             CachePlayerIfNeeded();
+            TrySnapBesidePlayerAfterSceneLoad();
             if (!emerged)
             {
                 TryPickup();
@@ -209,13 +282,14 @@ namespace Castlevania2D.Npcs
             PairLoopIdleSprite2D pairLoop = GetComponent<PairLoopIdleSprite2D>();
             if (pairLoop != null)
             {
-                pairLoop.enabled = false;
+                Destroy(pairLoop);
             }
 
             NpcTalk2D talk = GetComponent<NpcTalk2D>();
             if (talk != null)
             {
                 talk.enabled = false;
+                Destroy(talk);
             }
         }
 
@@ -264,6 +338,10 @@ namespace Castlevania2D.Npcs
                 CompanionHintTitle,
                 CompanionHintText,
                 interactionDistance);
+            if (CompanionFollowSession.Recruited || HintJournal.Contains(CompanionHintId))
+            {
+                meetingHint.SetArmed(false);
+            }
         }
 
         private void TryPickup()
@@ -389,15 +467,38 @@ namespace Castlevania2D.Npcs
 
         private void Emerge()
         {
-            emerged = true;
-            following = false;
-            if (meetingHint != null)
-            {
-                meetingHint.SetArmed(false);
-            }
-
+            CompanionFollowSession.MarkRecruited();
+            ForceEmerged();
             BeginSettleInPlace();
             PlayVfx();
+            ApplyBodyFrame();
+        }
+
+        private void TrySnapBesidePlayerAfterSceneLoad()
+        {
+            if (!CompanionFollowSession.Recruited)
+            {
+                return;
+            }
+
+            if (!emerged)
+            {
+                ForceEmerged();
+            }
+
+            if (sceneArriveSnapFrames <= 0 || player == null)
+            {
+                return;
+            }
+
+            sceneArriveSnapFrames--;
+            if (sceneArriveSnapFrames > 0)
+            {
+                return;
+            }
+
+            PlaceBesidePlayerIfPossible();
+            BeginSettleInPlace();
             ApplyBodyFrame();
         }
 
@@ -1155,6 +1256,27 @@ namespace Castlevania2D.Npcs
             }
         }
 
+        private void PlaceBesidePlayerIfPossible()
+        {
+            CachePlayerIfNeeded();
+            if (player == null)
+            {
+                return;
+            }
+
+            int facing = ResolvePlayerFacing();
+            Vector3 beside = player.position;
+            beside.x -= facing * followDistance;
+            beside.y = ResolvePlayerFeetY(player.position);
+            beside.z = 0f;
+            if (TryGetWalkableGroundY(beside, 2f, 6f, out float groundY))
+            {
+                beside.y = groundY;
+            }
+
+            transform.position = beside;
+        }
+
         private void FollowPlayer()
         {
             if (player == null)
@@ -1229,13 +1351,21 @@ namespace Castlevania2D.Npcs
 
             float destX = Mathf.MoveTowards(current.x, targetX, speed * Time.deltaTime);
             Vector3 dest = new Vector3(destX, standY, current.z);
-            if (!TryGetStableGroundY(dest, 0.35f, 0.4f, out float destY))
+            if (!TryGetStableGroundY(dest, 0.55f, 0.6f, out float destY)
+                && !TryGetWalkableGroundY(dest, 0.7f, 0.8f, out destY))
             {
-                SetPositionBlocked(new Vector3(current.x, standY, current.z));
-                return;
+                Vector3 ahead = dest;
+                ahead.x += Mathf.Sign(targetX - current.x) * 0.18f;
+                if (!TryGetStableGroundY(ahead, 0.7f, 0.8f, out destY))
+                {
+                    SetPositionBlocked(new Vector3(current.x, standY, current.z));
+                    return;
+                }
+
+                dest.x = ahead.x;
             }
 
-            dest.y = Mathf.MoveTowards(current.y, destY, 2.4f * Time.deltaTime);
+            dest.y = Mathf.MoveTowards(current.y, destY, 3.2f * Time.deltaTime);
             SetPositionBlocked(dest);
         }
 
@@ -1278,47 +1408,71 @@ namespace Castlevania2D.Npcs
 
         private bool IsAtSlopeSeam(Vector3 around)
         {
-            bool hasSlope = false;
-            bool hasFlat = false;
-            for (int i = -2; i <= 2; i++)
+            const float sample = 0.35f;
+            if (!TryGetFloorSample(around + new Vector3(-sample, 0f, 0f), out float leftY, out Vector2 leftNormal)
+                || !TryGetFloorSample(around, out float midY, out Vector2 midNormal)
+                || !TryGetFloorSample(around + new Vector3(sample, 0f, 0f), out float rightY, out Vector2 rightNormal))
             {
-                Vector3 probe = around;
-                probe.x += 0.2f * i;
-                ClassifyGroundAt(probe, ref hasSlope, ref hasFlat);
-                if (hasSlope && hasFlat)
+                return false;
+            }
+
+            float heightDelta = Mathf.Max(
+                Mathf.Abs(leftY - midY),
+                Mathf.Abs(rightY - midY),
+                Mathf.Abs(leftY - rightY));
+            if (heightDelta < 0.28f)
+            {
+                return false;
+            }
+
+            int slopeCount = 0;
+            if (IsRealSlopeNormal(leftNormal))
+            {
+                slopeCount++;
+            }
+
+            if (IsRealSlopeNormal(midNormal))
+            {
+                slopeCount++;
+            }
+
+            if (IsRealSlopeNormal(rightNormal))
+            {
+                slopeCount++;
+            }
+
+            return slopeCount >= 2;
+        }
+
+        private bool TryGetFloorSample(Vector3 around, out float groundY, out Vector2 normal)
+        {
+            groundY = around.y;
+            normal = Vector2.up;
+            int hitCount = Physics2D.Raycast(
+                new Vector2(around.x, around.y + 0.45f),
+                Vector2.down,
+                SolidFilter(),
+                MoveHits,
+                0.95f);
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit2D hit = MoveHits[i];
+                if (!IsWalkableFloor(hit))
                 {
-                    return true;
+                    continue;
                 }
+
+                groundY = hit.point.y;
+                normal = hit.normal;
+                return true;
             }
 
             return false;
         }
 
-        private void ClassifyGroundAt(Vector3 around, ref bool hasSlope, ref bool hasFlat)
+        private static bool IsRealSlopeNormal(Vector2 normal)
         {
-            int hitCount = Physics2D.Raycast(
-                new Vector2(around.x, around.y + 0.4f),
-                Vector2.down,
-                SolidFilter(),
-                MoveHits,
-                0.85f);
-            for (int i = 0; i < hitCount; i++)
-            {
-                RaycastHit2D hit = MoveHits[i];
-                if (IsIgnoredCollider(hit.collider) || IsActorCollider(hit.collider))
-                {
-                    continue;
-                }
-
-                if (hit.normal.y >= 0.82f)
-                {
-                    hasFlat = true;
-                }
-                else if (hit.normal.y >= 0.22f)
-                {
-                    hasSlope = true;
-                }
-            }
+            return normal.y >= 0.35f && normal.y < 0.78f && Mathf.Abs(normal.x) >= 0.4f;
         }
 
         private bool TryCommitMoveTarget(float npcX, ref float targetX)
@@ -1408,7 +1562,7 @@ namespace Castlevania2D.Npcs
                         continue;
                     }
 
-                    if (hit.normal.y >= 0.22f && hit.normal.y < 0.82f)
+                    if (IsRealSlopeNormal(hit.normal))
                     {
                         return true;
                     }
@@ -1478,6 +1632,37 @@ namespace Castlevania2D.Npcs
             return false;
         }
 
+        private void ReleaseOwnedSprites()
+        {
+            if (!ownsShiftedSprites)
+            {
+                return;
+            }
+
+            DestroyOwnedArray(followIdleFrames);
+            DestroyOwnedArray(followWalkFrames);
+            DestroyOwnedArray(appearVfxFrames);
+            DestroyOwnedArray(lootPickupFrames);
+            DestroyOwnedArray(jumpFrames);
+            ownsShiftedSprites = false;
+        }
+
+        private static void DestroyOwnedArray(Sprite[] sprites)
+        {
+            if (sprites == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                if (sprites[i] != null)
+                {
+                    Object.Destroy(sprites[i]);
+                }
+            }
+        }
+
         private static Sprite[] OffsetSpritesDown(Sprite[] source, float pixelsDown)
         {
             if (source == null || source.Length == 0)
@@ -1507,6 +1692,7 @@ namespace Castlevania2D.Npcs
                     0,
                     SpriteMeshType.FullRect);
                 shifted.name = sprite.name;
+                shifted.hideFlags = HideFlags.HideAndDontSave;
                 result[i] = shifted;
             }
 
@@ -1614,6 +1800,7 @@ namespace Castlevania2D.Npcs
 
             if (frame != null)
             {
+                bodyRenderer.enabled = true;
                 bodyRenderer.sprite = frame;
             }
         }
@@ -1799,10 +1986,6 @@ namespace Castlevania2D.Npcs
             wasPlayerGrounded = IsPlayerGrounded();
             waitingForPlayerLanding = !wasPlayerGrounded;
             playerAirborneTime = 0f;
-            if (emerged)
-            {
-                BeginSettleInPlace();
-            }
         }
     }
 }

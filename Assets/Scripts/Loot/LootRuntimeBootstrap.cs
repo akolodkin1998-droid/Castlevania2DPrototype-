@@ -37,14 +37,14 @@ namespace Castlevania2D.Loot
                 return;
             }
 
+            EnsurePlayerComponents();
+            RestoreOrGrantStartingLoot();
             if (!LootDropSprites.AreReady)
             {
                 Debug.LogWarning("LootRuntimeBootstrap: drop textures not found in Resources/Items.");
                 return;
             }
 
-            EnsurePlayerComponents();
-            RestoreOrGrantStartingLoot();
             WireSceneEnemies();
         }
 

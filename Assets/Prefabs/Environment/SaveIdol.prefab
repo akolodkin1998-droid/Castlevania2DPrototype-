@@ -101,10 +101,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7bab5aba1173f894098d14eb227a7fb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  idleSprite: {fileID: 21300000, guid: 21602bf8f8455b4478f700f5ca71a1db, type: 3}
-  saveFrames:
+  idleFrames:
+  - {fileID: 21300000, guid: 21602bf8f8455b4478f700f5ca71a1db, type: 3}
   - {fileID: 21300000, guid: 7493a7a484a9b4b44878871e3c643b3c, type: 3}
   - {fileID: 21300000, guid: ad2ec19c1273c814eb9541fc9caecb2f, type: 3}
+  saveFrames:
   - {fileID: 21300000, guid: 11eaf6fdfc150894f9656af1f3437e14, type: 3}
   - {fileID: 21300000, guid: 10aa0914e75eeb346bbf4ff25f66ac42, type: 3}
   - {fileID: 21300000, guid: e94d787455a084e469c1b8ce74f0d337, type: 3}
@@ -112,6 +113,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: b2cc3c62b1608fb4ba3806f5935f325a, type: 3}
   - {fileID: 21300000, guid: 1bb69ff8c45256f4ea4d8d52c2ad0a8e, type: 3}
   - {fileID: 21300000, guid: 92077f38b9051a644bf9abdec2a627f4, type: 3}
+  idleFrameRate: 6
   frameRate: 12
 --- !u!114 &8052863625814340852
 MonoBehaviour:
@@ -126,9 +128,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   interactionDistance: 2
-  promptLocalPosition: {x: 0, y: 2.55, z: 0}
-  promptScale: {x: 0.48, y: 0.48, z: 1}
-  promptPopDuration: 0.22
-  promptPopOffset: 0.2
+  messageLocalPosition: {x: 0, y: 3.4, z: 0}
   messageDuration: 1.5
-  promptSprite: {fileID: 21300000, guid: d8a1c4e7b2f0496e8c3d5a7b9e0f1c2d, type: 3}

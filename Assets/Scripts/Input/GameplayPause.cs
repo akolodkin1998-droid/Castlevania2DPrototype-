@@ -41,5 +41,11 @@ namespace Castlevania2D.Input
 
             Time.timeScale = restore;
         }
+
+        public static void ForceClear()
+        {
+            holdCount = 0;
+            Time.timeScale = 1f;
+        }
     }
 }

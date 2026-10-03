@@ -9,8 +9,8 @@ using PlayerHealth = Castlevania2D.Health.Health;
 
 public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump, IRopeClimber, ILootPickupActor {
 
-    [SerializeField] float      m_speed = 4.0f;
-    [SerializeField] float      m_jumpForce = 7.5f;
+    [SerializeField] float      m_speed = 2.75f;
+    [SerializeField] float      m_jumpForce = 8.5f;
     [SerializeField] float      m_rollForce = 6.0f;
     [SerializeField] bool       m_noBlood = false;
     [SerializeField] GameObject m_slideDust;
@@ -163,6 +163,11 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             Debug.LogError("HeroKnight: Animator has no Runtime Animator Controller assigned.", this);
             enabled = false;
             return;
+        }
+
+        if (GetComponent<PlayerManualLootPickup2D>() == null)
+        {
+            gameObject.AddComponent<PlayerManualLootPickup2D>();
         }
 
         m_groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_HeroKnight>();
@@ -826,10 +831,9 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             return;
         }
 
-        if (!m_lootCollected && m_pendingLoot != null && Time.time >= m_pickupCollectAt)
+        if (!m_lootCollected && m_pendingLoot != null && m_pendingLoot && Time.time >= m_pickupCollectAt)
         {
-            m_pendingLoot.TryCollectToPlayer();
-            m_lootCollected = true;
+            m_lootCollected = m_pendingLoot.TryCollectToPlayer();
         }
 
         if (IsInPickup())
@@ -861,10 +865,9 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
     private void EndLootPickup()
     {
-        if (m_pendingLoot != null && !m_lootCollected)
+        if (m_pendingLoot != null && m_pendingLoot && !m_lootCollected)
         {
-            m_pendingLoot.TryCollectToPlayer();
-            m_lootCollected = true;
+            m_lootCollected = m_pendingLoot.TryCollectToPlayer();
         }
 
         if (m_pendingLoot != null && m_pendingLoot)

@@ -12,12 +12,21 @@ namespace Castlevania2D.Level
         private BoxCollider2D interiorCollider;
         private BoxCollider2D ceilingCollider;
         private BoxCollider2D floorCollider;
+        private SpriteRenderer cabinRenderer;
         private SpriteRenderer playerRenderer;
         private int playerSortingOrder;
         private Transform passengerRoot;
         private Collider2D passengerBody;
         private WoodenElevator2D elevator;
         private bool passengerInside;
+        private Transform playerRoot;
+        private float nextPlayerSearchTime;
+
+        public void RefreshPassengerNow()
+        {
+            CachePlayer();
+            SetInside(IsPlayerInCabin());
+        }
 
         private void Awake()
         {
@@ -33,8 +42,10 @@ namespace Castlevania2D.Level
             {
                 Transform ceiling = root.Find("Ceiling");
                 Transform floor = root.Find("Floor");
+                Transform cabin = root.Find("Cabin");
                 ceilingCollider = ceiling != null ? ceiling.GetComponent<BoxCollider2D>() : null;
                 floorCollider = floor != null ? floor.GetComponent<BoxCollider2D>() : null;
+                cabinRenderer = cabin != null ? cabin.GetComponent<SpriteRenderer>() : null;
             }
         }
 
@@ -46,69 +57,87 @@ namespace Castlevania2D.Level
 
         private void FixedUpdate()
         {
-            bool inside = passengerBody != null && IsStandingInsideCabin(passengerBody);
-            SetInside(inside);
+            CachePlayer();
+            SetInside(IsPlayerInCabin());
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        private void CachePlayer()
         {
-            TryCapturePassenger(other);
-        }
-
-        private void OnTriggerStay2D(Collider2D other)
-        {
-            TryCapturePassenger(other);
-        }
-
-        private void OnTriggerExit2D(Collider2D other)
-        {
-            if (!IsPlayerBodyCollider(other))
+            if (playerRoot != null || Time.unscaledTime < nextPlayerSearchTime)
             {
                 return;
             }
 
-            if (passengerBody != null && other != passengerBody)
+            nextPlayerSearchTime = Time.unscaledTime + 0.5f;
+            GameObject playerObject = GameObject.Find(playerObjectName);
+            if (playerObject == null)
             {
                 return;
             }
 
-            SetInside(false);
+            playerRoot = playerObject.transform;
+            passengerRoot = playerRoot;
+            passengerBody = FindBodyCollider(playerObject);
+            CachePlayerRenderer(passengerBody);
         }
 
-        private void TryCapturePassenger(Collider2D other)
+        private static Collider2D FindBodyCollider(GameObject playerObject)
         {
-            if (!IsPlayerBodyCollider(other))
+            Collider2D[] colliders = playerObject.GetComponentsInChildren<Collider2D>();
+            for (int i = 0; i < colliders.Length; i++)
             {
-                return;
+                Collider2D collider = colliders[i];
+                if (collider != null && collider.enabled && !collider.isTrigger)
+                {
+                    return collider;
+                }
             }
 
-            CachePlayerRenderer(other);
-            passengerRoot = other.attachedRigidbody != null
-                ? other.attachedRigidbody.transform
-                : other.transform;
-            passengerBody = other;
-            SetInside(IsStandingInsideCabin(other));
+            return null;
         }
 
-        private bool IsStandingInsideCabin(Collider2D body)
+        private bool IsPlayerInCabin()
         {
-            if (body == null)
+            if (playerRoot == null)
             {
                 return false;
             }
 
-            Bounds bodyBounds = body.bounds;
-            if (ceilingCollider != null && bodyBounds.min.y >= ceilingCollider.bounds.min.y)
+            Bounds body = passengerBody != null
+                ? passengerBody.bounds
+                : new Bounds(playerRoot.position, new Vector3(0.8f, 1.8f, 1f));
+
+            if (cabinRenderer != null)
+            {
+                Bounds cabin = cabinRenderer.bounds;
+                cabin.Expand(new Vector3(0.4f, 0.6f, 0f));
+                if (cabin.Intersects(body))
+                {
+                    return true;
+                }
+            }
+
+            if (floorCollider == null)
             {
                 return false;
             }
 
-            if (floorCollider != null && bodyBounds.min.y < floorCollider.bounds.min.y - 0.25f)
+            Bounds floor = floorCollider.bounds;
+            float floorTop = floor.max.y;
+            float feet = body.min.y;
+            bool overlapsFloorX = body.max.x > floor.min.x && body.min.x < floor.max.x;
+            bool standingOnFloor = feet >= floorTop - 0.45f && feet <= floorTop + 0.7f;
+            if (!overlapsFloorX || !standingOnFloor)
             {
                 return false;
             }
 
-            return interiorCollider == null || interiorCollider.bounds.Intersects(bodyBounds);
+            if (ceilingCollider != null && feet >= ceilingCollider.bounds.min.y)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void SetInside(bool inside)
@@ -146,18 +175,15 @@ namespace Castlevania2D.Level
 
         private void CachePlayerRenderer(Collider2D other)
         {
-            if (playerRenderer != null)
+            if (playerRenderer != null || playerRoot == null)
             {
                 return;
             }
 
-            Transform root = other.attachedRigidbody != null
-                ? other.attachedRigidbody.transform
-                : other.transform.root;
-            playerRenderer = root.GetComponent<SpriteRenderer>();
+            playerRenderer = playerRoot.GetComponent<SpriteRenderer>();
             if (playerRenderer == null)
             {
-                playerRenderer = root.GetComponentInChildren<SpriteRenderer>();
+                playerRenderer = playerRoot.GetComponentInChildren<SpriteRenderer>();
             }
 
             if (playerRenderer != null)
@@ -184,26 +210,6 @@ namespace Castlevania2D.Level
             }
 
             playerRenderer.sortingOrder = playerSortingOrder;
-        }
-
-        private bool IsPlayerBodyCollider(Collider2D other)
-        {
-            if (other == null || other.isTrigger)
-            {
-                return false;
-            }
-
-            Transform root = other.attachedRigidbody != null
-                ? other.attachedRigidbody.transform
-                : other.transform.root;
-
-            if (root.CompareTag("Player"))
-            {
-                return true;
-            }
-
-            return !string.IsNullOrEmpty(playerObjectName)
-                   && root.name.Equals(playerObjectName, System.StringComparison.Ordinal);
         }
     }
 }
