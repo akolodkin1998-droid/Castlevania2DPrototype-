@@ -7,7 +7,7 @@ using Castlevania2D.Loot;
 using Castlevania2D.Player;
 using PlayerHealth = Castlevania2D.Health.Health;
 
-public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump, IRopeClimber, ILootPickupActor {
+public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProjectileReflectSurface, IForcedJump, IRopeClimber, ILootPickupActor, IHeroSwordUltHost {
 
     [SerializeField] float      m_speed = 2.75f;
     [SerializeField] float      m_jumpForce = 8.5f;
@@ -84,6 +84,9 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
     private static readonly int ClimbState = Animator.StringToHash("Climb");
     private static readonly int PickupState = Animator.StringToHash("Pickup");
     private const float PickupCollectTime = 6f / 12f;
+    private bool m_castingUlt;
+    private bool m_drinkingPotion;
+    private bool IsBusyPose => m_castingUlt || m_drinkingPotion;
     private bool m_pickingLoot;
     private bool m_pickupEntered;
     private bool m_lootCollected;
@@ -93,6 +96,22 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
     public bool IsGrounded => m_grounded;
     public int FacingDirection => m_facingDirection;
+    public int AttackDamage => m_attackDamage;
+    public SpriteRenderer BodyRenderer => m_spriteRenderer;
+    public Animator BodyAnimator => m_animator;
+    public Vector2 FeetPosition
+    {
+        get
+        {
+            if (m_bodyCollider != null)
+            {
+                Bounds bounds = m_bodyCollider.bounds;
+                return new Vector2(bounds.center.x, bounds.min.y);
+            }
+
+            return transform.position;
+        }
+    }
     public bool IsBlockingProjectiles => m_blocking && !m_dead;
 
     int IBlockDurability.BlockDurability => m_blocking ? m_blockedAttacksRemaining : 0;
@@ -168,6 +187,16 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         if (GetComponent<PlayerManualLootPickup2D>() == null)
         {
             gameObject.AddComponent<PlayerManualLootPickup2D>();
+        }
+
+        if (GetComponent<HeroSwordUlt2D>() == null)
+        {
+            gameObject.AddComponent<HeroSwordUlt2D>();
+        }
+
+        if (GetComponent<HeroPotionDrink2D>() == null)
+        {
+            gameObject.AddComponent<HeroPotionDrink2D>();
         }
 
         m_groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_HeroKnight>();
@@ -273,7 +302,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         bool isOverheadBlocking = m_overheadBlockHeld;
 
         // Swap direction of sprite depending on walk direction
-        if (!m_rolling && !m_pickingLoot)
+        if (!m_rolling && !m_pickingLoot && !IsBusyPose)
         {
             if (inputX > 0)
             {
@@ -288,7 +317,8 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         }
 
         // Strong enemy launches (Likho kick / Giant Likho) override walk and roll.
-        if (m_knockbackReceiver != null
+        if (!IsBusyPose
+            && m_knockbackReceiver != null
             && m_knockbackReceiver.TryGetKnockbackVelocity(out Vector2 knockbackVelocity))
         {
             if (m_rolling)
@@ -314,7 +344,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         else if (!m_rolling)
         {
             bool slideDownWall = IsAirborneAgainstWall(inputX);
-            float walkSpeed = m_pickingLoot || IsWalkStartupLocked() || slideDownWall ? 0f : inputX * m_speed;
+            float walkSpeed = m_pickingLoot || IsBusyPose || IsWalkStartupLocked() || slideDownWall ? 0f : inputX * m_speed;
             m_body2d.linearVelocity = new Vector2(walkSpeed, m_body2d.linearVelocity.y);
             SetWallSlideFriction(slideDownWall);
         }
@@ -332,7 +362,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         m_animator.SetBool("WallSlide", false);
 
         bool inAttack = IsInAttack();
-        if (m_queuedAttack && !inAttack)
+        if (m_queuedAttack && !inAttack && !IsBusyPose)
         {
             m_queuedAttack = false;
             BeginNextAttack();
@@ -343,6 +373,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             !inputLocked &&
             !m_rolling &&
             !m_pickingLoot &&
+            !IsBusyPose &&
             ((Input.GetMouseButtonDown(1) && Input.GetKey(KeyCode.W)) ||
              (Input.GetKeyDown(KeyCode.W) && Input.GetMouseButton(1)));
 
@@ -359,7 +390,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             m_animator.ResetTrigger("Block");
         }
         //Attack
-        else if (!inputLocked && Input.GetMouseButtonDown(0) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetMouseButtonDown(0) && !m_rolling && !m_pickingLoot && !IsBusyPose && !isOverheadBlocking)
         {
             if (inAttack)
             {
@@ -371,7 +402,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             }
         }
         // Normal block: right mouse button only (no W).
-        else if (!inputLocked && Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetMouseButtonDown(1) && !Input.GetKey(KeyCode.W) && !m_rolling && !m_pickingLoot && !IsBusyPose && !isOverheadBlocking)
         {
             BeginBlock();
             m_overheadBlockHeld = false;
@@ -382,12 +413,12 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             EndBlock();
         }
         // Roll / belly slide. Hold Left Shift to keep sliding on frames 9-10.
-        else if (!inputLocked && Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_pickingLoot && !m_isWallSliding && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling && !m_pickingLoot && !IsBusyPose && !m_isWallSliding && !isOverheadBlocking)
         {
             BeginRoll();
         }
         //Jump
-        else if (!inputLocked && Input.GetKeyDown("space") && m_grounded && !m_rolling && !m_pickingLoot && !isOverheadBlocking)
+        else if (!inputLocked && Input.GetKeyDown("space") && m_grounded && !m_rolling && !m_pickingLoot && !IsBusyPose && !isOverheadBlocking)
         {
             ForceJump();
         }
@@ -397,7 +428,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         m_animator.SetBool("FrontBlock", m_blocking && !m_overheadBlockHeld);
 
         // Run / overhead-block walk (AnimState 1). Always update (not gated by attack/block edges).
-        if (m_pickingLoot)
+        if (m_pickingLoot || IsBusyPose)
         {
             m_animator.SetInteger("AnimState", 0);
         }
@@ -416,7 +447,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
 
     public void ForceJump(float forceMultiplier = 1f)
     {
-        if (m_dead || m_pickingLoot || m_body2d == null)
+        if (m_dead || m_pickingLoot || IsBusyPose || m_body2d == null)
         {
             return;
         }
@@ -795,6 +826,7 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
             || m_rolling
             || m_climbing
             || m_pickingLoot
+            || IsBusyPose
             || IsInAttack()
             || m_animator == null)
         {
@@ -1186,8 +1218,67 @@ public class HeroKnight : MonoBehaviour, IDamageBlocker, IBlockDurability, IProj
         }
     }
 
+    public bool CanBeginUlt()
+    {
+        return CanBeginPoseAction() && !m_drinkingPotion;
+    }
+
+    public void NotifyUltStarted()
+    {
+        m_castingUlt = true;
+        m_queuedAttack = false;
+        EndBlock();
+        if (m_body2d != null)
+        {
+            m_body2d.linearVelocity = new Vector2(0f, m_body2d.linearVelocity.y);
+        }
+    }
+
+    public void NotifyUltFinished()
+    {
+        m_castingUlt = false;
+    }
+
+    public bool CanBeginPotion()
+    {
+        return CanBeginPoseAction() && !m_castingUlt;
+    }
+
+    public void NotifyPotionStarted()
+    {
+        m_drinkingPotion = true;
+        m_queuedAttack = false;
+        EndBlock();
+        if (m_body2d != null)
+        {
+            m_body2d.linearVelocity = new Vector2(0f, m_body2d.linearVelocity.y);
+        }
+    }
+
+    public void NotifyPotionFinished()
+    {
+        m_drinkingPotion = false;
+    }
+
+    private bool CanBeginPoseAction()
+    {
+        return !m_dead
+               && m_grounded
+               && !m_rolling
+               && !m_climbing
+               && !m_pickingLoot
+               && !m_castingUlt
+               && !m_drinkingPotion
+               && !IsInAttack();
+    }
+
     public bool IsBlockingDamage(DamageInfo damage)
     {
+        if (m_castingUlt || m_drinkingPotion)
+        {
+            return true;
+        }
+
         if (!m_blocking || m_dead || m_blockedAttacksRemaining <= 0)
         {
             return false;

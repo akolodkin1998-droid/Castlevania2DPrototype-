@@ -15,6 +15,8 @@ using UnityEngine;
 public static class HeroKnightSingleAnimSetupEditor
 {
     private const string Attack1FlagPath = "Temp/setup_new_hero_attack1.flag";
+    private const string UltFlagPath = "Temp/setup_hero_ult.flag";
+    private const string ReimportUltFlagPath = "Temp/reimport_hero_ult_sprites.flag";
     private const string SourceRoot =
         @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\warrior_animations_game_ready-v5 (1)\game_ready\frames";
 
@@ -32,7 +34,10 @@ public static class HeroKnightSingleAnimSetupEditor
     static HeroKnightSingleAnimSetupEditor()
     {
         EditorApplication.delayCall += TryApplyAttack1FromFlag;
+        EditorApplication.delayCall += TryApplyUltFromFlag;
         EditorApplication.update += PollAttack1Flag;
+        EditorApplication.update += PollUltFlag;
+        EditorApplication.update += PollReimportUltFlag;
     }
 
     private static void PollAttack1Flag()
@@ -46,6 +51,201 @@ public static class HeroKnightSingleAnimSetupEditor
         }
 
         TryApplyAttack1FromFlag();
+    }
+
+    private static void PollReimportUltFlag()
+    {
+        if (!File.Exists(ReimportUltFlagPath)
+            || EditorApplication.isCompiling
+            || EditorApplication.isUpdating
+            || EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        File.Delete(ReimportUltFlagPath);
+        string[] folders =
+        {
+            "Assets/Resources/Player/Ult/Sheathe",
+            "Assets/Resources/Player/Ult/Cast",
+            "Assets/Resources/Player/Ult/Pillar",
+            "Assets/Resources/Player/Heal",
+        };
+        for (int i = 0; i < folders.Length; i++)
+        {
+            AssetDatabase.ImportAsset(folders[i], ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+        }
+    }
+
+    private static void PollUltFlag()
+    {
+        if (!File.Exists(UltFlagPath)
+            || EditorApplication.isCompiling
+            || EditorApplication.isUpdating
+            || EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        TryApplyUltFromFlag();
+    }
+
+    private static void TryApplyUltFromFlag()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode || !File.Exists(UltFlagPath))
+        {
+            return;
+        }
+
+        File.Delete(UltFlagPath);
+        try
+        {
+            ApplyHeroUltAssets(openSpriteEditor: false);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText("Temp/setup_hero_ult_result.txt", "OK");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            Directory.CreateDirectory("Temp");
+            File.WriteAllText("Temp/setup_hero_ult_result.txt", "FAIL\n" + exception);
+        }
+    }
+
+    [MenuItem("Tools/Castlevania 2D/Apply HeroKnight Anim/Sword Ult")]
+    public static void ApplyHeroUltMenu()
+    {
+        ApplyHeroUltAssets(openSpriteEditor: true);
+    }
+
+    public static void ApplyHeroUltAssets(bool openSpriteEditor)
+    {
+        const string desktopRoot =
+            @"C:\Users\Bensh\OneDrive\Рабочий стол\Персонаж\Новый персонаж";
+        string sheatheSource = Path.Combine(desktopRoot, "Убирает щит");
+        string ultSource = Path.Combine(desktopRoot, "Ульт");
+        string pillarSource = Path.Combine(desktopRoot, "vfx УЛЬТ");
+
+        ApplyExternalFolder(
+            sheatheSource,
+            "*.png",
+            "HeroKnight_sheathe.png",
+            "HeroKnight_Sheathe",
+            12,
+            false,
+            PixelsPerUnit,
+            chromaKeyGray: false,
+            openSpriteEditor: false,
+            updatePrefabSprite: false,
+            cleanFrameNameOnly: false);
+
+        ApplyExternalFolder(
+            ultSource,
+            "*.png",
+            "HeroKnight_ult.png",
+            "HeroKnight_Ult",
+            12,
+            false,
+            PixelsPerUnit,
+            chromaKeyGray: false,
+            openSpriteEditor: false,
+            updatePrefabSprite: false,
+            cleanFrameNameOnly: false);
+
+        CopyStripToResources("HeroKnight_sheathe.png");
+        CopyStripToResources("HeroKnight_ult.png");
+        BuildPillarStrip(pillarSource);
+
+        if (openSpriteEditor)
+        {
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/Resources/Player/Ult/HeroKnight_ult.png");
+            EditorGUIUtility.PingObject(Selection.activeObject);
+        }
+    }
+
+    private static void CopyStripToResources(string stripFileName)
+    {
+        string from = $"{OutputFolder}/{stripFileName}";
+        string to = "Assets/Resources/Player/Ult/" + stripFileName;
+        Directory.CreateDirectory(Path.GetFullPath("Assets/Resources/Player/Ult"));
+        AssetDatabase.CopyAsset(from, to);
+        AssetDatabase.ImportAsset(to, ImportAssetOptions.ForceUpdate);
+    }
+
+    private static void BuildPillarStrip(string sourceFolder)
+    {
+        if (!Directory.Exists(sourceFolder))
+        {
+            throw new DirectoryNotFoundException(sourceFolder);
+        }
+
+        string[] framePaths = Directory.GetFiles(sourceFolder, "*.png", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, Comparer<string>.Create(CompareNaturalFileNames))
+            .ToArray();
+        if (framePaths.Length == 0)
+        {
+            throw new InvalidOperationException("No pillar frames in " + sourceFolder);
+        }
+
+        const int cell = 128;
+        var frames = new Texture2D[framePaths.Length];
+        for (int i = 0; i < framePaths.Length; i++)
+        {
+            byte[] bytes = File.ReadAllBytes(framePaths[i]);
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            texture.LoadImage(bytes);
+            frames[i] = texture;
+        }
+
+        var strip = new Texture2D(cell * frames.Length, cell, TextureFormat.RGBA32, false);
+        var clear = Enumerable.Repeat(new Color32(0, 0, 0, 0), strip.width * strip.height).ToArray();
+        strip.SetPixels32(clear);
+        for (int i = 0; i < frames.Length; i++)
+        {
+            int copyW = Mathf.Min(cell, frames[i].width);
+            int copyH = Mathf.Min(cell, frames[i].height);
+            Color[] pixels = frames[i].GetPixels(0, 0, copyW, copyH);
+            strip.SetPixels(i * cell, 0, copyW, copyH, pixels);
+            UnityEngine.Object.DestroyImmediate(frames[i]);
+        }
+
+        strip.Apply();
+        const string assetPath = "Assets/Resources/Player/Ult/HeroKnight_pillar.png";
+        Directory.CreateDirectory(Path.GetFullPath("Assets/Resources/Player/Ult"));
+        File.WriteAllBytes(Path.GetFullPath(assetPath), strip.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(strip);
+
+        AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+        var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+        if (importer == null)
+        {
+            return;
+        }
+
+        importer.textureType = TextureImporterType.Sprite;
+        importer.spriteImportMode = SpriteImportMode.Multiple;
+        importer.spritePixelsPerUnit = 64f;
+        importer.filterMode = FilterMode.Point;
+        importer.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.alphaIsTransparency = true;
+        importer.mipmapEnabled = false;
+        var metas = new SpriteMetaData[framePaths.Length];
+        for (int i = 0; i < framePaths.Length; i++)
+        {
+            metas[i] = new SpriteMetaData
+            {
+                name = $"frame_{i:000}",
+                rect = new Rect(i * cell, 0f, cell, cell),
+                alignment = (int)SpriteAlignment.Custom,
+                pivot = new Vector2(0.5f, 0.08f),
+                border = Vector4.zero
+            };
+        }
+
+        importer.spritesheet = metas;
+        EditorUtility.SetDirty(importer);
+        importer.SaveAndReimport();
     }
 
     private static void TryApplyAttack1FromFlag()

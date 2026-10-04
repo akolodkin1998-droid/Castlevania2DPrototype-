@@ -1,4 +1,5 @@
 using System;
+using Castlevania2D.Combat;
 using UnityEngine;
 using PlayerHealth = Castlevania2D.Health.Health;
 
@@ -33,7 +34,7 @@ namespace Castlevania2D.Loot
             HealingPotionCountChanged?.Invoke(healingPotionCount);
         }
 
-        public bool TryUseHealingPotion()
+        public bool CanUseHealingPotion()
         {
             if (healingPotionCount <= 0)
             {
@@ -41,14 +42,46 @@ namespace Castlevania2D.Loot
             }
 
             PlayerHealth health = GetComponent<PlayerHealth>();
-            if (health == null || !health.IsAlive || health.CurrentHealth >= health.MaxHealth)
+            return health != null && health.IsAlive && health.CurrentHealth < health.MaxHealth;
+        }
+
+        public bool TryConsumeHealingPotion()
+        {
+            if (!CanUseHealingPotion())
             {
                 return false;
             }
 
             healingPotionCount--;
-            health.Restore(healAmount);
             HealingPotionCountChanged?.Invoke(healingPotionCount);
+            return true;
+        }
+
+        public void ApplyHealingPotionRestore()
+        {
+            PlayerHealth health = GetComponent<PlayerHealth>();
+            if (health == null || !health.IsAlive)
+            {
+                return;
+            }
+
+            health.Restore(healAmount);
+        }
+
+        public bool TryUseHealingPotion()
+        {
+            HeroPotionDrink2D drinker = GetComponent<HeroPotionDrink2D>();
+            if (drinker != null)
+            {
+                return drinker.TryBegin();
+            }
+
+            if (!TryConsumeHealingPotion())
+            {
+                return false;
+            }
+
+            ApplyHealingPotionRestore();
             return true;
         }
     }

@@ -48,6 +48,7 @@ namespace Castlevania2D.Hub
 
             GameplaySceneEnter.Apply();
             PlayerInventorySession.ApplyToScene();
+            LootRuntimeBootstrap.GrantTestHealingPotion();
             PlayerInventoryHudBootstrap.Refresh();
             StruchokRuntimeBootstrap.RebuildForActiveScene();
 

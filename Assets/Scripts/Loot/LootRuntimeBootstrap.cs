@@ -112,6 +112,11 @@ namespace Castlevania2D.Loot
             {
                 player.AddComponent<PlayerManualLootPickup2D>();
             }
+
+            if (player.GetComponent<Castlevania2D.Combat.HeroPotionDrink2D>() == null)
+            {
+                player.AddComponent<Castlevania2D.Combat.HeroPotionDrink2D>();
+            }
         }
 
         private static void RestoreOrGrantStartingLoot()
@@ -124,6 +129,7 @@ namespace Castlevania2D.Loot
             if (PlayerInventorySession.HasSnapshot)
             {
                 PlayerInventorySession.ApplyToScene();
+                GrantTestHealingPotion();
                 return;
             }
 
@@ -141,7 +147,28 @@ namespace Castlevania2D.Loot
 
             inventory.EnsureMinimum(LootItemId.MaraTear, StartingMaraTearCount);
             inventory.EnsureMinimum(LootItemId.Common, StartingCommonCount);
+            GrantTestHealingPotion();
             PlayerInventorySession.CaptureFromScene();
+        }
+
+        public static void GrantTestHealingPotion()
+        {
+            GameObject player = GameObject.Find(PlayerObjectName);
+            if (player == null)
+            {
+                return;
+            }
+
+            PlayerQuickAccessInventory quickAccess = player.GetComponent<PlayerQuickAccessInventory>();
+            if (quickAccess == null)
+            {
+                quickAccess = player.AddComponent<PlayerQuickAccessInventory>();
+            }
+
+            if (quickAccess.HealingPotionCount <= 0)
+            {
+                quickAccess.AddHealingPotion(1);
+            }
         }
 
         private static void WireSceneEnemies()
